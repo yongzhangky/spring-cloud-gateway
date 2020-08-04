@@ -1,0 +1,26 @@
+USER-SERVER:
+  ribbon:
+    listOfServers: https://www.baidu.com, https://www.google.com
+    NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RoundRobinRule
+
+spring:
+  jmx:
+    enabled: false
+  cloud:
+    gateway:
+      routes:
+      - id: kylin
+        uri: lb://USER-SERVER
+        order: 9000
+        predicates:
+        - Path=/test
+        filters:
+          - StripPrefix=1
+
+logging:
+  level:
+    org.springframework.cloud.gateway: TRACE
+    org.springframework.http.server.reactive: DEBUG
+    org.springframework.web.reactive: DEBUG
+    reactor.ipc.netty: DEBUG
+    reactor.netty: DEBUG
