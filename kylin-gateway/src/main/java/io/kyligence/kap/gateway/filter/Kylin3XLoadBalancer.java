@@ -14,4 +14,5 @@ public class Kylin3XLoadBalancer extends BaseLoadBalancer {
 	public String getServiceId() {
 		return getName();
 	}
+
 }

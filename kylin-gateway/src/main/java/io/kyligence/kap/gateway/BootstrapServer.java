@@ -42,13 +42,15 @@ public class BootstrapServer {
 			try {
 				HashMap json = new ObjectMapper().readValue(r, HashMap.class);
 				for (Object key : json.keySet()) {
-					if (key instanceof String && "project".equalsIgnoreCase((String) key)) {
+					if (key instanceof String
+							&& "project".equalsIgnoreCase((String) key)) {
 						if ("p1".equalsIgnoreCase((String) json.get(key))) {
 							return true;
 						}
 					}
 				}
-			} catch (Exception e) {
+			}
+			catch (Exception e) {
 
 			}
 
@@ -56,12 +58,10 @@ public class BootstrapServer {
 		};
 	}
 
-
 	public RouteLocator testRouteLoacator(RouteLocatorBuilder builder) {
 		return builder.routes()
-				.route("test_route", r -> r.header("project", "p1")
-						.or().query("project", "p1")
-						.or().readBody(String.class, myPredicate())
+				.route("test_route", r -> r.header("project", "p1").or()
+						.query("project", "p1").or().readBody(String.class, myPredicate())
 						.filters(f -> f.addRequestHeader("Gateway", "test_gateway"))
 						.uri("http://10.1.2.56:7070"))
 				.build();

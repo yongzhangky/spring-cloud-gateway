@@ -24,10 +24,10 @@ import org.springframework.web.reactive.DispatcherHandler;
 public class Kylin3XGatewayLoadBalancerClientAutoConfiguration {
 
 	@Bean
-	@ConditionalOnMissingBean({LoadBalancerClientFilter.class,
+	@ConditionalOnMissingBean({ LoadBalancerClientFilter.class,
 			ReactiveLoadBalancerClientFilter.class })
 	public LoadBalancerClientFilter loadBalancerClientFilter(LoadBalancerClient client,
-															 LoadBalancerProperties properties) {
+			LoadBalancerProperties properties) {
 		return new Kylin3XReactiveLoadBalancerClientFilter(client, properties);
 	}
 
