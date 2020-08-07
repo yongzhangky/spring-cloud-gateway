@@ -38,3 +38,10 @@ server:
       rename-on-rotate: false
       prefix: access_log
       suffix: .log
+
+management.endpoints.web.exposure.include: health,gateway
+
+kylin:
+  gateway:
+    ke:
+      version: 3x
