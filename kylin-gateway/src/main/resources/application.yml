@@ -14,6 +14,12 @@ spring:
         order: 9000
         predicates:
         - Kylin=p1,p2
+      - id: default
+        uri: lb://USER-SERVER
+        order: 22333
+        predicates:
+        - Path=/**
+
 
 logging:
   level:

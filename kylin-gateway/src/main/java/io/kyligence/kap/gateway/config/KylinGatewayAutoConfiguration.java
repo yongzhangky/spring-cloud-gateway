@@ -1,5 +1,6 @@
 package io.kyligence.kap.gateway.config;
 
+import io.kyligence.kap.gateway.filter.KylinRedirectToGatewayFilter;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -17,15 +18,20 @@ import org.springframework.web.reactive.DispatcherHandler;
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(name = "spring.cloud.gateway.enabled", matchIfMissing = true)
 @EnableConfigurationProperties
-@AutoConfigureBefore({ HttpHandlerAutoConfiguration.class,
-		WebFluxAutoConfiguration.class })
-@AutoConfigureAfter({ GatewayLoadBalancerClientAutoConfiguration.class,
-		GatewayClassPathWarningAutoConfiguration.class })
+@AutoConfigureBefore({HttpHandlerAutoConfiguration.class,
+		WebFluxAutoConfiguration.class})
+@AutoConfigureAfter({GatewayLoadBalancerClientAutoConfiguration.class,
+		GatewayClassPathWarningAutoConfiguration.class})
 @ConditionalOnClass(DispatcherHandler.class)
 public class KylinGatewayAutoConfiguration {
 
 	@Bean
 	public KylinRoutePredicateFactory kylinRoutePredicateFactory() {
 		return new KylinRoutePredicateFactory();
+	}
+
+	@Bean
+	public KylinRedirectToGatewayFilter kylinRedirectToGatewayFilter() {
+		return new KylinRedirectToGatewayFilter();
 	}
 }
