@@ -4,7 +4,8 @@ import com.google.common.base.Preconditions;
 
 public class AsyncQueryUtil {
 
-	private AsyncQueryUtil() {}
+	private AsyncQueryUtil() {
+	}
 
 	public static final String ASYNC_QUERY_SUFFIX_TAG = "ASYNC";
 

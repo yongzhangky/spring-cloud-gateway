@@ -24,23 +24,26 @@ public class Kylin3XReactiveLoadBalancerClientFilter extends LoadBalancerClientF
 
 	private Map<String, Kylin3XLoadBalancer> resourceGroup = new ConcurrentHashMap<>();
 
-	public Kylin3XReactiveLoadBalancerClientFilter(LoadBalancerClient loadBalancer, LoadBalancerProperties properties) {
+	public Kylin3XReactiveLoadBalancerClientFilter(LoadBalancerClient loadBalancer,
+			LoadBalancerProperties properties) {
 		super(loadBalancer, properties);
 
-		Kylin3XLoadBalancer balancer = new Kylin3XLoadBalancer("USER-SERVER2", new DummyPing(), new RoundRobinRule());
+		Kylin3XLoadBalancer balancer = new Kylin3XLoadBalancer("USER-SERVER",
+				new DummyPing(), new RoundRobinRule());
 		balancer.addServer(new Server("10.1.2.56:7070"));
 		balancer.addServer(new Server("10.1.2.166:7070"));
 		balancer.addServer(new Server("10.1.2.167:7070"));
 		balancer.addServer(new Server("10.1.2.168:7070"));
 
-		Kylin3XLoadBalancer balancerAsync = new Kylin3XLoadBalancer("USER-SERVER2-ASYNC", new DummyPing(), new RoundRobinRule());
-		balancer.addServer(new Server("10.1.2.56:7070"));
-		balancer.addServer(new Server("10.1.2.166:7070"));
-		balancer.addServer(new Server("10.1.2.167:7070"));
-		balancer.addServer(new Server("10.1.2.168:7070"));
+		Kylin3XLoadBalancer balancerAsync = new Kylin3XLoadBalancer("USER-SERVER-ASYNC",
+				new DummyPing(), new RoundRobinRule());
+		balancerAsync.addServer(new Server("10.1.2.56:7070"));
+		balancerAsync.addServer(new Server("10.1.2.166:7070"));
+		balancerAsync.addServer(new Server("10.1.2.167:7070"));
+		balancerAsync.addServer(new Server("10.1.2.168:7070"));
 
 		resourceGroup.put(balancer.getServiceId(), balancer);
-		resourceGroup.put(balancer.getServiceId(), balancerAsync);
+		resourceGroup.put(balancerAsync.getServiceId(), balancerAsync);
 	}
 
 	public ILoadBalancer getLoadBalancer(String serviceId) {
@@ -72,9 +75,12 @@ public class Kylin3XReactiveLoadBalancerClientFilter extends LoadBalancerClientF
 
 		ServiceInstance serviceInstance = null;
 		if (uri.getPath().endsWith(ASYNC_SUFFIX)) {
-			serviceInstance = choose(AsyncQueryUtil.buildAsyncQueryServiceId(uri.getHost()), AsyncQueryUtil.ASYNC_QUERY_SUFFIX_TAG);
+			serviceInstance = choose(
+					AsyncQueryUtil.buildAsyncQueryServiceId(uri.getHost()),
+					AsyncQueryUtil.ASYNC_QUERY_SUFFIX_TAG);
 		}
 
 		return serviceInstance != null ? serviceInstance : choose(uri.getHost(), null);
 	}
+
 }

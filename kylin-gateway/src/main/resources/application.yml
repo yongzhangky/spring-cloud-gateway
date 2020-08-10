@@ -1,6 +1,6 @@
 USER-SERVER:
   ribbon:
-    listOfServers: https://www.baidu.com
+    listOfServers: 10.1.2.166:7070
     NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RoundRobinRule
 
 spring:
@@ -13,9 +13,7 @@ spring:
         uri: lb://USER-SERVER
         order: 9000
         predicates:
-        - Path=/test
-        filters:
-          - StripPrefix=1
+        - Kylin=p1,p2
 
 logging:
   level:
@@ -45,3 +43,5 @@ kylin:
   gateway:
     ke:
       version: 3x
+
+server.port: 7777
