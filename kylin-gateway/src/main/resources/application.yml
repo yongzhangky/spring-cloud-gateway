@@ -36,7 +36,7 @@ management.endpoints.web.exposure.include: health,gateway
 kylin:
   gateway:
     route-table:
-      refresh-cron: 0/30 * * * * *
+      refresh-cron: 0/3 * * * * *
     ke:
       version: 3x
     health:

@@ -16,8 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.actuate.AbstractGatewayControllerEndpoint;
-import org.springframework.cloud.gateway.actuate.GatewayControllerEndpoint;
-import org.springframework.cloud.gateway.actuate.GatewayLegacyControllerEndpoint;
 import org.springframework.cloud.gateway.filter.LoadBalancerClientFilter;
 import org.springframework.cloud.gateway.handler.predicate.PredicateDefinition;
 import org.springframework.cloud.gateway.route.RouteDefinition;
@@ -58,6 +56,8 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 
 	@Autowired
 	private IPingStrategy pingStrategy;
+
+	private List<KylinRouteRaw> oldRouteRawList = Lists.newArrayList();
 
 	public RefreshRouteTableScheduler(IRouteTableReader routeTableReader,
 									  AbstractGatewayControllerEndpoint gatewayControllerEndpoint,
@@ -183,17 +183,47 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 		return checkResult;
 	}
 
+	// to be optimized
+	private boolean isRouteTableChange(List<KylinRouteRaw> newRouteRawList) {
+		if (this.oldRouteRawList.size() != newRouteRawList.size()) {
+			return true;
+		}
+
+		int size = newRouteRawList.size();
+		for (KylinRouteRaw routeRaw : newRouteRawList) {
+			for (KylinRouteRaw oldRouteRaw : this.oldRouteRawList) {
+				if (routeRaw.toString().equals(oldRouteRaw.toString())) {
+					size--;
+					break;
+				}
+			}
+		}
+
+		if (size != 0) {
+			return true;
+		}
+
+		return false;
+	}
+
 	@Scheduled(cron = "${kylin.gateway.route-table.refresh-cron}")
-	public void run() {
+	public synchronized void run() {
 		try {
 			List<KylinRouteRaw> routeRawList = this.routeTableReader.list();
 			if (CollectionUtils.isEmpty(routeRawList)) {
+				// do not permit to clear route table
+				return;
+			}
+
+			if (!isRouteTableChange(routeRawList)) {
 				return;
 			}
 
 			if (isRawRouteTableIllegal(routeRawList)) {
 				return;
 			}
+
+			logger.info("Start to update route table ...");
 
 			List<RouteDefinition> routeDefinitionList = Lists.newArrayList();
 			List<BaseLoadBalancer> loadBalancerList = Lists.newArrayList();
@@ -212,26 +242,17 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 
 			this.loadBalancerClientFilter.addResourceGroups(loadBalancerList);
 
-			if (gatewayControllerEndpoint instanceof GatewayControllerEndpoint) {
-				((GatewayControllerEndpoint) gatewayControllerEndpoint).routes()
-						.subscribe(tRoute -> {
-							gatewayControllerEndpoint.delete((String) tRoute.get("route_id")).subscribe();
-						});
-			} else if (gatewayControllerEndpoint instanceof GatewayLegacyControllerEndpoint) {
-				((GatewayLegacyControllerEndpoint) gatewayControllerEndpoint).routes()
-						.subscribe(tRouteList -> {
-							tRouteList.forEach(tRoute -> {
-								gatewayControllerEndpoint.delete((String) tRoute.get("route_id")).subscribe();
-							});
-						});
-			}
+			this.oldRouteRawList.forEach(kylinRouteRaw ->
+					gatewayControllerEndpoint.delete(String.valueOf(kylinRouteRaw.getId())).subscribe());
 
-			routeDefinitionList.forEach(routeDefinition -> {
-				gatewayControllerEndpoint.save(routeDefinition.getId(), routeDefinition).subscribe();
-			});
+			routeDefinitionList.forEach(routeDefinition ->
+					gatewayControllerEndpoint.save(routeDefinition.getId(), routeDefinition).subscribe());
 
 			publisher.publishEvent(new Kylin3XRefreshRoutesEvent(this));
 			this.loadBalancerClientFilter.updateResourceGroups(loadBalancerList);
+
+			this.oldRouteRawList = routeRawList;
+			logger.info("Update route table is success ...");
 		} catch (Exception e) {
 			logger.error("Failed to get route table from {}!",
 					routeTableReader.getClass(), e);
