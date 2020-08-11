@@ -37,5 +37,16 @@ kylin:
       refresh-cron: 0/30 * * * * *
     ke:
       version: 3x
+    health:
+      retry-times: 3
+      timeout-seconds: 3000
+      interval-seconds: 10
+    datasource:
+      type: jdbc
+      driver-class-name: com.mysql.jdbc.Driver
+      url: jdbc:mysql://localhost:3306/leotest
+      username: root
+      password: passw0rd
+      table-name: km_route_table
 
 server.port: 7777
