@@ -1,9 +1,11 @@
 package io.kyligence.kap.gateway.config;
 
 import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+import io.kyligence.kap.gateway.entity.KylinJdbcDataSource;
 import io.kyligence.kap.gateway.route.IRouteTableReader;
 import io.kyligence.kap.gateway.route.KylinJdbcRouteTableReader;
 import io.kyligence.kap.gateway.persistent.KylinJdbcTemplate;
+import io.kyligence.kap.gateway.route.MockRouteTableReader;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -35,6 +37,12 @@ public class KylinRouteTableConfiguration {
 		return new KylinJdbcRouteTableReader(
 				new KylinJdbcTemplate(dataSource, kylinJdbcDataSource.getTableName()),
 				kylinJdbcDataSource.getTableName());
+	}
+
+	@Bean
+	@ConditionalOnProperty(name = "kylin.gateway.datasource.type", havingValue = "mock")
+	public IRouteTableReader mockRouteTableReader() {
+		return new MockRouteTableReader();
 	}
 
 }

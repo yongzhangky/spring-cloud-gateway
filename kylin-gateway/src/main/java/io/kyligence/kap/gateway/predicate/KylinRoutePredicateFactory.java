@@ -87,17 +87,14 @@ public class KylinRoutePredicateFactory
 			try {
 				HashMap json = new ObjectMapper().readValue(r, HashMap.class);
 				for (Object key : json.keySet()) {
-					if (key instanceof String
-							&& PROJECT_KEY.equalsIgnoreCase((String) key)) {
-
+					if (key instanceof String && PROJECT_KEY.equalsIgnoreCase((String) key)) {
 						for (String project : config.getProjects())
 							if (project.equalsIgnoreCase((String) json.get(key))) {
 								return true;
 							}
 					}
 				}
-			}
-			catch (Exception e) {
+			} catch (Exception e) {
 				log.error("Failed to check project from body!", e);
 			}
 
@@ -113,27 +110,24 @@ public class KylinRoutePredicateFactory
 		return new AsyncPredicate<ServerWebExchange>() {
 			@Override
 			public Publisher<Boolean> apply(ServerWebExchange exchange) {
-				Object cachedBody = exchange.getAttribute(CACHE_REQUEST_BODY_OBJECT_KEY);
+				if (testHeader(exchange, config) || testQuery(exchange, config)) {
+					return Mono.just(true);
+				}
 
+				Object cachedBody = exchange.getAttribute(CACHE_REQUEST_BODY_OBJECT_KEY);
 				if (cachedBody != null) {
 					try {
 						boolean test = predicate.test(cachedBody);
 						exchange.getAttributes().put(TEST_ATTRIBUTE, test);
 						return Mono.just(test);
-					}
-					catch (ClassCastException e) {
+					} catch (ClassCastException e) {
 						if (log.isDebugEnabled()) {
 							log.debug("Predicate test failed because class in predicate "
 									+ "does not match the cached body object", e);
 						}
 					}
 					return Mono.just(false);
-				}
-				else {
-					if (testHeader(exchange, config) || testQuery(exchange, config)) {
-						return Mono.just(true);
-					}
-
+				} else {
 					return ServerWebExchangeUtils.cacheRequestBodyAndRequest(exchange,
 							(serverHttpRequest) -> ServerRequest
 									.create(exchange.mutate().request(serverHttpRequest)
@@ -147,8 +141,7 @@ public class KylinRoutePredicateFactory
 
 			@Override
 			public String toString() {
-				return String.format("Projects: %s",
-						Arrays.toString(config.getProjects().toArray()));
+				return String.format("Projects: %s", Arrays.toString(config.getProjects().toArray()));
 			}
 		};
 	}
@@ -156,8 +149,7 @@ public class KylinRoutePredicateFactory
 	@Override
 	@SuppressWarnings("unchecked")
 	public Predicate<ServerWebExchange> apply(Config config) {
-		throw new UnsupportedOperationException(
-				"KylinRoutePredicateFactory is only async.");
+		throw new UnsupportedOperationException("KylinRoutePredicateFactory is only async.");
 	}
 
 	@Validated

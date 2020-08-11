@@ -1,4 +1,4 @@
-package io.kyligence.kap.gateway.config;
+package io.kyligence.kap.gateway.entity;
 
 import lombok.Data;
 
