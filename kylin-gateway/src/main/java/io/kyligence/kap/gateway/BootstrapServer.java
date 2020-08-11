@@ -17,9 +17,7 @@
 package io.kyligence.kap.gateway;
 
 import io.kyligence.kap.gateway.entity.KylinRouteRaw;
-import io.kyligence.kap.gateway.persistent.KylinRouteStore;
 import io.kyligence.kap.gateway.persistent.domain.KylinRouteDO;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -28,16 +26,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.List;
-
 /**
  * @author zhiyu.zeng
  */
 
 @SpringBootApplication
 public class BootstrapServer implements CommandLineRunner {
-	@Autowired
-	KylinRouteStore kylinRouteStore;
 
 	public static void main(String[] args) {
 		SpringApplication.run(BootstrapServer.class, args);
