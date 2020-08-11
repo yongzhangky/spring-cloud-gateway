@@ -17,7 +17,9 @@
 package org.springframework.cloud.gateway.filter;
 
 import java.net.URI;
+import java.util.List;
 
+import com.netflix.loadbalancer.BaseLoadBalancer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import reactor.core.publisher.Mono;
@@ -112,4 +114,11 @@ public class LoadBalancerClientFilter implements GlobalFilter, Ordered {
 				((URI) exchange.getAttribute(GATEWAY_REQUEST_URL_ATTR)).getHost());
 	}
 
+	public void updateResourceGroups(List<BaseLoadBalancer> resourceGroup) {
+		// not to do something
+	}
+
+	public void addResourceGroups(List<BaseLoadBalancer> resourceGroup) {
+		// not to do something
+	}
 }

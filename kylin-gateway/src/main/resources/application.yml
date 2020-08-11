@@ -1,25 +1,11 @@
-USER-SERVER:
-  ribbon:
-    listOfServers: 10.1.2.166:7070
-    NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RoundRobinRule
-
 spring:
   jmx:
     enabled: false
   cloud:
     gateway:
-      routes:
-      - id: kylin
-        uri: lb://USER-SERVER
-        order: 9000
-        predicates:
-        - Kylin=p1,p2
-      - id: default
-        uri: lb://USER-SERVER
-        order: 22333
-        predicates:
-        - Path=/**
-
+      httpclient:
+        connectTimeout: 3000
+        responseTimeout: 480000
 
 logging:
   level:
@@ -47,6 +33,8 @@ management.endpoints.web.exposure.include: health,gateway
 
 kylin:
   gateway:
+    route-table:
+      refresh-cron: 0/30 * * * * *
     ke:
       version: 3x
 
