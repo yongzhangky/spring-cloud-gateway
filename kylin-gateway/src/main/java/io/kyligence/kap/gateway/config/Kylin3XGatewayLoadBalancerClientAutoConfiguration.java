@@ -1,10 +1,6 @@
 package io.kyligence.kap.gateway.config;
 
-import com.netflix.loadbalancer.IPingStrategy;
-import com.netflix.loadbalancer.PingUrl;
 import io.kyligence.kap.gateway.filter.Kylin3XReactiveLoadBalancerClientFilter;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -21,28 +17,18 @@ import org.springframework.web.reactive.DispatcherHandler;
 
 @ConditionalOnProperty(name = "kylin.gateway.ke.version", havingValue = "3x")
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnClass({ LoadBalancerClient.class, RibbonAutoConfiguration.class,
-		DispatcherHandler.class })
+@ConditionalOnClass({LoadBalancerClient.class, RibbonAutoConfiguration.class,
+		DispatcherHandler.class})
 @AutoConfigureAfter(RibbonAutoConfiguration.class)
 @EnableConfigurationProperties(LoadBalancerProperties.class)
 public class Kylin3XGatewayLoadBalancerClientAutoConfiguration {
 
-	@Autowired
-	private PingUrl ping;
-
-	@Autowired
-	private IPingStrategy pingStrategy;
-
-	@Value("${kylin.gateway.health.interval-seconds}")
-	private int pingIntervalSeconds;
-
 	@Bean
-	@ConditionalOnMissingBean({ LoadBalancerClientFilter.class,
-			ReactiveLoadBalancerClientFilter.class })
+	@ConditionalOnMissingBean({LoadBalancerClientFilter.class,
+			ReactiveLoadBalancerClientFilter.class})
 	public LoadBalancerClientFilter loadBalancerClientFilter(LoadBalancerClient client,
-			LoadBalancerProperties properties) {
-		return new Kylin3XReactiveLoadBalancerClientFilter(client, properties, ping,
-				pingStrategy, pingIntervalSeconds);
+															 LoadBalancerProperties properties) {
+		return new Kylin3XReactiveLoadBalancerClientFilter(client, properties);
 	}
 
 }

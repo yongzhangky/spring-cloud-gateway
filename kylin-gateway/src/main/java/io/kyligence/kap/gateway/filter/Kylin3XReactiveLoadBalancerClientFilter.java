@@ -2,9 +2,6 @@ package io.kyligence.kap.gateway.filter;
 
 import com.netflix.loadbalancer.BaseLoadBalancer;
 import com.netflix.loadbalancer.ILoadBalancer;
-import com.netflix.loadbalancer.IPing;
-import com.netflix.loadbalancer.IPingStrategy;
-import com.netflix.loadbalancer.RoundRobinRule;
 import com.netflix.loadbalancer.Server;
 import io.kyligence.kap.gateway.utils.AsyncQueryUtil;
 import org.springframework.cloud.client.ServiceInstance;
@@ -21,38 +18,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static io.kyligence.kap.gateway.constant.KylinRouteConstant.ASYNC_SUFFIX;
 import static org.springframework.cloud.gateway.support.ServerWebExchangeUtils.GATEWAY_REQUEST_URL_ATTR;
 
 public class Kylin3XReactiveLoadBalancerClientFilter extends LoadBalancerClientFilter
 		implements ApplicationListener<RefreshRoutesEvent> {
 
-	private static final String ASYNC_SUFFIX = "/async_query";
-
 	private Map<String, Kylin3XLoadBalancer> resourceGroups = new ConcurrentHashMap<>();
 
 	public Kylin3XReactiveLoadBalancerClientFilter(LoadBalancerClient loadBalancer,
-			LoadBalancerProperties properties, IPing ping, IPingStrategy pingStrategy,
-			int pingIntervalSeconds) {
+												   LoadBalancerProperties properties) {
 		super(loadBalancer, properties);
-
-		Kylin3XLoadBalancer balancer = new Kylin3XLoadBalancer("USER-SERVER", ping,
-				new RoundRobinRule(), pingStrategy);
-		// balancer.addServer(new Server("10.1.2.56:7070"));
-		balancer.addServer(new Server("10.1.2.166:7070"));
-		// balancer.addServer(new Server("10.1.2.167:7070"));
-		// balancer.addServer(new Server("10.1.2.168:7070"));
-		balancer.setPingInterval(pingIntervalSeconds);
-
-		Kylin3XLoadBalancer balancerAsync = new Kylin3XLoadBalancer("USER-SERVER-ASYNC",
-				ping, new RoundRobinRule(), pingStrategy);
-		balancerAsync.setPingInterval(pingIntervalSeconds);
-		// balancerAsync.addServer(new Server("10.1.2.56:7070"));
-		balancerAsync.addServer(new Server("10.1.2.166:7070"));
-		// balancerAsync.addServer(new Server("10.1.2.167:7070"));
-		// balancerAsync.addServer(new Server("10.1.2.168:7070"));
-
-		resourceGroups.put(balancer.getServiceId(), balancer);
-		resourceGroups.put(balancerAsync.getServiceId(), balancerAsync);
 	}
 
 	public ILoadBalancer getLoadBalancer(String serviceId) {
@@ -85,7 +61,7 @@ public class Kylin3XReactiveLoadBalancerClientFilter extends LoadBalancerClientF
 		ServiceInstance serviceInstance = null;
 		if (uri.getPath().endsWith(ASYNC_SUFFIX)) {
 			serviceInstance = choose(
-					AsyncQueryUtil.buildAsyncQueryServiceId(uri.getHost()),
+					AsyncQueryUtil.buildAsyncQueryServiceId(uri.getAuthority()),
 					AsyncQueryUtil.ASYNC_QUERY_SUFFIX_TAG);
 		}
 

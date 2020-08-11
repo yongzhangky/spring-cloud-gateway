@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: kylin-gateway
   jmx:
     enabled: false
   cloud:
@@ -42,9 +44,9 @@ kylin:
       timeout-seconds: 3000
       interval-seconds: 10
     datasource:
-      type: jdbc
+      type: mock
       driver-class-name: com.mysql.jdbc.Driver
-      url: jdbc:mysql://localhost:3306/leotest
+      url: jdbc:mysql://10.3.1.17:3306/leotest
       username: root
       password: passw0rd
       table-name: km_route_table

@@ -2,15 +2,14 @@ package io.kyligence.kap.gateway.route;
 
 import com.google.common.collect.Lists;
 import com.netflix.loadbalancer.BaseLoadBalancer;
-import com.netflix.loadbalancer.DummyPing;
-import com.netflix.loadbalancer.IPing;
 import com.netflix.loadbalancer.IPingStrategy;
 import com.netflix.loadbalancer.PingUrl;
 import com.netflix.loadbalancer.RoundRobinRule;
 import io.kyligence.kap.gateway.constant.KylinResourceGroupTypeEnum;
 import io.kyligence.kap.gateway.entity.KylinRouteRaw;
+import io.kyligence.kap.gateway.event.Kylin3XRefreshRoutesEvent;
 import io.kyligence.kap.gateway.filter.Kylin3XLoadBalancer;
-import io.kyligence.kap.gateway.health.ConcurrentPingStrategy;
+import io.kyligence.kap.gateway.utils.AsyncQueryUtil;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -19,7 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.actuate.AbstractGatewayControllerEndpoint;
 import org.springframework.cloud.gateway.actuate.GatewayControllerEndpoint;
 import org.springframework.cloud.gateway.actuate.GatewayLegacyControllerEndpoint;
-import org.springframework.cloud.gateway.event.RefreshRoutesEvent;
 import org.springframework.cloud.gateway.filter.LoadBalancerClientFilter;
 import org.springframework.cloud.gateway.handler.predicate.PredicateDefinition;
 import org.springframework.cloud.gateway.route.RouteDefinition;
@@ -36,6 +34,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static io.kyligence.kap.gateway.constant.KylinRouteConstant.DEFAULT_RESOURCE_GROUP;
 import static io.kyligence.kap.gateway.constant.KylinRouteConstant.KYLIN_ROUTE_PREDICATE;
 import static io.kyligence.kap.gateway.constant.KylinRouteConstant.PREDICATE_ARG_KEY_0;
 
@@ -61,8 +60,8 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 	private IPingStrategy pingStrategy;
 
 	public RefreshRouteTableScheduler(IRouteTableReader routeTableReader,
-			AbstractGatewayControllerEndpoint gatewayControllerEndpoint,
-			LoadBalancerClientFilter loadBalancerClientFilter) {
+									  AbstractGatewayControllerEndpoint gatewayControllerEndpoint,
+									  LoadBalancerClientFilter loadBalancerClientFilter) {
 		this.routeTableReader = routeTableReader;
 		this.gatewayControllerEndpoint = gatewayControllerEndpoint;
 		this.loadBalancerClientFilter = loadBalancerClientFilter;
@@ -78,45 +77,66 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 		this.publisher = publisher;
 	}
 
-	private String getStringURI(String resourceGroup) {
-		return "lb://" + resourceGroup;
+	private String getStringURI(String project) {
+		return "lb://" + project.replace('_', '-');
+	}
+
+	private String addKylinHeader(String project) {
+		return "kylin-" + project;
+	}
+
+	private String getServiceId(KylinRouteRaw routeRaw, boolean skipAsync) {
+		String serviceId = addKylinHeader(routeRaw.getProject());
+		switch (KylinResourceGroupTypeEnum.valueOf(routeRaw.getType())) {
+			case GLOBAL:
+				serviceId = DEFAULT_RESOURCE_GROUP;
+				break;
+			case ASYNC:
+				if (!skipAsync) {
+					serviceId = AsyncQueryUtil.buildAsyncQueryServiceId(serviceId);
+				}
+				break;
+			default:
+				break;
+		}
+
+		return serviceId;
 	}
 
 	private RouteDefinition convert2RouteDefinition(KylinRouteRaw routeRaw)
 			throws URISyntaxException {
 		RouteDefinition routeDefinition = new RouteDefinition();
 
-		String uuid = routeRaw.getCluster() + "-" + routeRaw.getId();
+		String uuid = String.valueOf(routeRaw.getId());
 		routeDefinition.setId(uuid);
 
 		PredicateDefinition predicateDefinition = new PredicateDefinition();
 		routeDefinition.setPredicates(Lists.newArrayList(predicateDefinition));
 
 		switch (KylinResourceGroupTypeEnum.valueOf(routeRaw.getType())) {
-		case CUBE:
-		case ASYNC:
-			predicateDefinition.setName(KYLIN_ROUTE_PREDICATE);
-			predicateDefinition.getArgs().put(PREDICATE_ARG_KEY_0, routeRaw.getProject());
-			routeDefinition.setOrder(0);
-			break;
-		case GLOBAL:
-			predicateDefinition.setName("Path");
-			predicateDefinition.getArgs().put(PREDICATE_ARG_KEY_0, "/**");
-			routeDefinition.setOrder(Integer.MAX_VALUE);
-			break;
-		default:
-			routeDefinition.setOrder(Integer.MAX_VALUE - 1);
-			logger.warn("Route Table must have type!");
+			case ASYNC:
+			case CUBE:
+				predicateDefinition.setName(KYLIN_ROUTE_PREDICATE);
+				predicateDefinition.getArgs().put(PREDICATE_ARG_KEY_0, routeRaw.getProject());
+				routeDefinition.setOrder(0);
+				break;
+			case GLOBAL:
+				predicateDefinition.setName("Path");
+				predicateDefinition.getArgs().put(PREDICATE_ARG_KEY_0, "/**");
+				routeDefinition.setOrder(Integer.MAX_VALUE);
+				break;
+			default:
+				routeDefinition.setOrder(Integer.MAX_VALUE - 1);
+				logger.warn("Route Table must have type!");
 		}
 
-		routeDefinition.setUri(new URI(getStringURI(routeRaw.getResourceGroup())));
-
+		routeDefinition.setUri(new URI(getStringURI(getServiceId(routeRaw, true))));
 		return routeDefinition;
 	}
 
 	private Kylin3XLoadBalancer convert2Kylin3XLoadBalancer(KylinRouteRaw routeRaw) {
-		Kylin3XLoadBalancer kylin3XLoadBalancer = new Kylin3XLoadBalancer(
-				routeRaw.getResourceGroup(), ping, new RoundRobinRule(), pingStrategy);
+		Kylin3XLoadBalancer kylin3XLoadBalancer =
+				new Kylin3XLoadBalancer(getServiceId(routeRaw, false), ping, new RoundRobinRule(), pingStrategy);
 
 		kylin3XLoadBalancer.addServers(routeRaw.getBackends());
 		return kylin3XLoadBalancer;
@@ -143,8 +163,7 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 						|| Objects.isNull(uri.getScheme())) {
 					return true;
 				}
-			}
-			catch (URISyntaxException e) {
+			} catch (URISyntaxException e) {
 				return true;
 			}
 
@@ -181,14 +200,13 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 			for (KylinRouteRaw routeRaw : routeRawList) {
 				try {
 					RouteDefinition routeDefinition = convert2RouteDefinition(routeRaw);
-					Kylin3XLoadBalancer loadBalancer = convert2Kylin3XLoadBalancer(
-							routeRaw);
+					Kylin3XLoadBalancer loadBalancer = convert2Kylin3XLoadBalancer(routeRaw);
 
 					routeDefinitionList.add(routeDefinition);
 					loadBalancerList.add(loadBalancer);
-				}
-				catch (Exception e) {
+				} catch (Exception e) {
 					logger.error("Failed to convert KylinRouteRaw, {}", routeRaw, e);
+					return;
 				}
 			}
 
@@ -197,30 +215,24 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 			if (gatewayControllerEndpoint instanceof GatewayControllerEndpoint) {
 				((GatewayControllerEndpoint) gatewayControllerEndpoint).routes()
 						.subscribe(tRoute -> {
-							gatewayControllerEndpoint
-									.delete((String) tRoute.get("route_id")).subscribe();
+							gatewayControllerEndpoint.delete((String) tRoute.get("route_id")).subscribe();
 						});
-			}
-			else if (gatewayControllerEndpoint instanceof GatewayLegacyControllerEndpoint) {
+			} else if (gatewayControllerEndpoint instanceof GatewayLegacyControllerEndpoint) {
 				((GatewayLegacyControllerEndpoint) gatewayControllerEndpoint).routes()
 						.subscribe(tRouteList -> {
 							tRouteList.forEach(tRoute -> {
-								gatewayControllerEndpoint
-										.delete((String) tRoute.get("route_id"))
-										.subscribe();
+								gatewayControllerEndpoint.delete((String) tRoute.get("route_id")).subscribe();
 							});
 						});
 			}
 
 			routeDefinitionList.forEach(routeDefinition -> {
-				gatewayControllerEndpoint.save(routeDefinition.getId(), routeDefinition)
-						.subscribe();
+				gatewayControllerEndpoint.save(routeDefinition.getId(), routeDefinition).subscribe();
 			});
 
-			publisher.publishEvent(new RefreshRoutesEvent(this));
+			publisher.publishEvent(new Kylin3XRefreshRoutesEvent(this));
 			this.loadBalancerClientFilter.updateResourceGroups(loadBalancerList);
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			logger.error("Failed to get route table from {}!",
 					routeTableReader.getClass(), e);
 		}

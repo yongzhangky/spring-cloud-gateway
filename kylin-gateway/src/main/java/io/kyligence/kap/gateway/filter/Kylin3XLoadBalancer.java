@@ -8,8 +8,7 @@ import com.netflix.loadbalancer.LoadBalancerStats;
 
 public class Kylin3XLoadBalancer extends BaseLoadBalancer {
 
-	public Kylin3XLoadBalancer(String name, IPing ping, IRule rule,
-			IPingStrategy pingStrategy) {
+	public Kylin3XLoadBalancer(String name, IPing ping, IRule rule, IPingStrategy pingStrategy) {
 		super(name, rule, new LoadBalancerStats(name), ping, pingStrategy);
 	}
 
