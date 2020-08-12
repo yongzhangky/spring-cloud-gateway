@@ -42,7 +42,7 @@ public class KylinJdbcRouteTableReader implements IRouteTableReader {
 		log.debug("list route records");
 		List<KylinRouteDO> kylinRouteDOList = jdbcTemplate.query(String.format(SELECT_ALL_ROUTES, table),
 				new KylinRouteRowMapper());
-		return kylinRouteDOList.stream().map(KylinRouteRaw::new).collect(Collectors.toList());
+		return kylinRouteDOList.stream().map(KylinRouteRaw::convert).collect(Collectors.toList());
 	}
 
 }

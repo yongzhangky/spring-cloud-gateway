@@ -40,13 +40,12 @@ kylin:
     ke:
       version: 3x
     health:
-      check-url: /kylin/api/health
       rest-template:
         connect-timeout: 5000
         read-timeout: 5000
       ping-strategy:
         retry-times: 3
-        interval-seconds: 10
+        interval-seconds: 5
     datasource:
       type: mock
       driver-class-name: com.mysql.jdbc.Driver
