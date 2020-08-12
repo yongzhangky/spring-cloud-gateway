@@ -8,6 +8,7 @@ import org.reactivestreams.Publisher;
 import org.springframework.cloud.gateway.handler.AsyncPredicate;
 import org.springframework.cloud.gateway.handler.predicate.AbstractRoutePredicateFactory;
 import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.codec.HttpMessageReader;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.reactive.function.server.HandlerStrategies;
@@ -19,6 +20,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 public class KylinRoutePredicateFactory
@@ -34,6 +36,8 @@ public class KylinRoutePredicateFactory
 
 	private static final String CACHE_REQUEST_BODY_OBJECT_KEY = "cachedRequestBodyObject";
 
+	private static final String READ_REQUEST_BODY_OBJECT_KEY = "readRequestBodyObject";
+
 	private final List<HttpMessageReader<?>> messageReaders;
 
 	private final Class inClass;
@@ -46,7 +50,7 @@ public class KylinRoutePredicateFactory
 
 	@Override
 	public List<String> shortcutFieldOrder() {
-		return Arrays.asList(PROJECTS_KEY);
+		return Lists.newArrayList(PROJECTS_KEY);
 	}
 
 	@Override
@@ -59,20 +63,17 @@ public class KylinRoutePredicateFactory
 			return false;
 		}
 
-		boolean match = false;
 		for (String project : config.getProjects()) {
-			match = projects.stream().anyMatch(value -> value.equalsIgnoreCase(project));
-			if (match) {
+			if (projects.stream().anyMatch(value -> value.equalsIgnoreCase(project))) {
 				return true;
 			}
 		}
 
-		return match;
+		return false;
 	}
 
 	private boolean testHeader(ServerWebExchange exchange, Config config) {
-		List<String> values = exchange.getRequest().getHeaders().getOrDefault(PROJECT_KEY,
-				Collections.emptyList());
+		List<String> values = exchange.getRequest().getHeaders().getOrDefault(PROJECT_KEY, Collections.emptyList());
 		return testBasic(values, config);
 	}
 
@@ -86,13 +87,19 @@ public class KylinRoutePredicateFactory
 		return r -> {
 			try {
 				HashMap json = new ObjectMapper().readValue(r, HashMap.class);
-				for (Object key : json.keySet()) {
-					if (key instanceof String && PROJECT_KEY.equalsIgnoreCase((String) key)) {
-						for (String project : config.getProjects())
-							if (project.equalsIgnoreCase((String) json.get(key))) {
-								return true;
-							}
-					}
+				if (null == json) {
+					return false;
+				}
+
+				Optional jsonKey = json.keySet().stream()
+						.filter(key -> key instanceof String && PROJECT_KEY.equalsIgnoreCase((String) key))
+						.findFirst();
+
+				if (jsonKey.isPresent()) {
+					for (String project : config.getProjects())
+						if (project.equalsIgnoreCase((String) json.get(jsonKey.get()))) {
+							return true;
+						}
 				}
 			} catch (Exception e) {
 				log.error("Failed to check project from body!", e);
@@ -114,6 +121,10 @@ public class KylinRoutePredicateFactory
 					return Mono.just(true);
 				}
 
+				if (exchange.getRequest().getMethod() == HttpMethod.GET) {
+					return Mono.just(false);
+				}
+
 				Object cachedBody = exchange.getAttribute(CACHE_REQUEST_BODY_OBJECT_KEY);
 				if (cachedBody != null) {
 					try {
@@ -128,6 +139,11 @@ public class KylinRoutePredicateFactory
 					}
 					return Mono.just(false);
 				} else {
+					if (Boolean.valueOf(exchange.getAttribute(READ_REQUEST_BODY_OBJECT_KEY))) {
+						return Mono.just(false);
+					}
+
+					exchange.getAttributes().put(READ_REQUEST_BODY_OBJECT_KEY, "true");
 					return ServerWebExchangeUtils.cacheRequestBodyAndRequest(exchange,
 							(serverHttpRequest) -> ServerRequest
 									.create(exchange.mutate().request(serverHttpRequest)
