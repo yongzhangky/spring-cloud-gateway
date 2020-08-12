@@ -20,4 +20,9 @@ public class Kylin3XLoadBalancer extends BaseLoadBalancer {
 		return getName();
 	}
 
+
+	@Override
+	public void forceQuickPing() {
+		// Nothing to do
+	}
 }

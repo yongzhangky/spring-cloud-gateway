@@ -34,7 +34,8 @@ public class KylinPing implements IPing {
 				return true;
 			}
 		} catch (Exception e) {
-			log.error("health check failed, url: {}.", healthCheckUrl, e);
+			log.warn("health check failed, server: {}", server);
+			log.debug("health check failed!", e);
 		}
 		return false;
 	}

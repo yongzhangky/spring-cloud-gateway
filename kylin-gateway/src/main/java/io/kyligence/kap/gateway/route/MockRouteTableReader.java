@@ -18,7 +18,7 @@ public class MockRouteTableReader implements IRouteTableReader {
 		kylinRouteRawList.add(new KylinRouteRaw(new KylinRouteDO(2, "[\"10.1.2.56:7070\"]",
 				"p1", "common_query_2", "ASYNC", "1c4b3f35-21f9-44b2-a2de-ae2d5a94189f")));
 
-		kylinRouteRawList.add(new KylinRouteRaw(new KylinRouteDO(3, "[\"10.1.2.56:7070\"]",
+		kylinRouteRawList.add(new KylinRouteRaw(new KylinRouteDO(3, "[\"10.1.2.56:7070\", \"10.1.1.1:7070\"]",
 				"p2", "default", "GLOBAL", "1c4b3f35-21f9-44b2-a2de-ae2d5a94189f")));
 
 		kylinRouteRawList.add(new KylinRouteRaw(new KylinRouteDO(4, "[\"10.1.2.56:7070\"]",
