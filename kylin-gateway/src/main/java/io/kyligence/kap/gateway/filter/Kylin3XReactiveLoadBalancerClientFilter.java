@@ -71,7 +71,7 @@ public class Kylin3XReactiveLoadBalancerClientFilter extends LoadBalancerClientF
 
 	@Override
 	public void onApplicationEvent(RefreshRoutesEvent event) {
-		System.out.println(event);
+		// Nothing to do
 	}
 
 	@Override
@@ -81,8 +81,7 @@ public class Kylin3XReactiveLoadBalancerClientFilter extends LoadBalancerClientF
 		updateResourceGroups.forEach(resourceGroup -> {
 			if (resourceGroup instanceof Kylin3XLoadBalancer) {
 				Kylin3XLoadBalancer kylin3XLoadBalancer = ((Kylin3XLoadBalancer) resourceGroup);
-				newResourceGroups.put(kylin3XLoadBalancer.getServiceId(),
-						kylin3XLoadBalancer);
+				newResourceGroups.put(kylin3XLoadBalancer.getServiceId(), kylin3XLoadBalancer);
 			}
 		});
 
