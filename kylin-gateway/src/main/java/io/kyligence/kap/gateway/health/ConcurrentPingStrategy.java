@@ -42,7 +42,7 @@ public class ConcurrentPingStrategy implements IPingStrategy {
 	public boolean[] pingServers(IPing ping, Server[] servers) {
 		if (servers.length < 1) {
 			log.error("Ping servers is empty!");
-			return new boolean[1];
+			return new boolean[]{false};
 		}
 
 		boolean[] results = initTrueArray(new boolean[servers.length]);
@@ -85,7 +85,6 @@ public class ConcurrentPingStrategy implements IPingStrategy {
 
 			try {
 				boolean isAlive = ping.isAlive(server);
-				Thread.sleep(1000 * 10);
 				if (isAlive) {
 					if (serversStatus.get(server).get() > 0) {
 						serversStatus.get(server).set(0);
