@@ -23,41 +23,47 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Data
 public class ConcurrentPingStrategy implements IPingStrategy {
 
-	private Map<Server, AtomicInteger> failCounter = new ConcurrentHashMap<>();
+	private Map<Server, AtomicInteger> serversStatus = new ConcurrentHashMap<>();
 
-	private ExecutorService executorService;
+	private ExecutorService executorService = Executors.newCachedThreadPool();
 
 	private int retryTimes;
 
 	private int intervalSeconds;
 
+	private boolean[] initTrueArray(boolean[] array) {
+		for (int i = 0; i < array.length; i++) {
+			array[i] = true;
+		}
+		return array;
+	}
+
 	@Override
 	public boolean[] pingServers(IPing ping, Server[] servers) {
-		int numCandidates = servers.length;
-		boolean[] results = new boolean[numCandidates];
+		if (servers.length < 1) {
+			log.error("Ping servers is empty!");
+			return new boolean[1];
+		}
+
+		boolean[] results = initTrueArray(new boolean[servers.length]);
 		if (Objects.isNull(ping)) {
-			log.error("Ping object is null");
+			log.error("Ping object is null!");
 			return results;
 		}
 
-		executorService = Executors.newCachedThreadPool();
+		Future[] futures = new Future[servers.length];
 
-		Future[] futures = new Future[numCandidates];
-
-		for (int i = 0; i < numCandidates; i++) {
+		for (int i = 0; i < servers.length; i++) {
 			futures[i] = executorService.submit(new CheckServerTask(ping, servers[i]));
 		}
 
-		for (int i = 0; i < numCandidates; i++) {
+		for (int i = 0; i < servers.length; i++) {
 			try {
 				results[i] = (Boolean) futures[i].get();
-			}
-			catch (Exception e) {
+			} catch (Exception e) {
 				log.error("Task execute failed, server: {}", servers[i]);
 			}
 		}
-
-		executorService.shutdown();
 
 		return results;
 	}
@@ -75,30 +81,23 @@ public class ConcurrentPingStrategy implements IPingStrategy {
 
 		@Override
 		public Boolean call() {
-			boolean result;
+			serversStatus.putIfAbsent(server, new AtomicInteger(0));
+
 			try {
 				boolean isAlive = ping.isAlive(server);
+				Thread.sleep(1000 * 10);
 				if (isAlive) {
-					failCounter.remove(server);
+					if (serversStatus.get(server).get() > 0) {
+						serversStatus.get(server).set(0);
+					}
 					return true;
 				}
-			}
-			catch (Exception e) {
-				log.error("Exception while pinging Server: '{}'", server, e);
-			}
-
-			if (failCounter.containsKey(server)) {
-				failCounter.get(server).addAndGet(1);
-			}
-			else {
-				failCounter.put(server, new AtomicInteger(1));
+			} catch (Exception e) {
+				log.error("Failed to ping server: {}", server, e);
 			}
 
-			result = failCounter.get(server).get() < retryTimes;
-
-			return result;
+			return serversStatus.get(server).incrementAndGet() < retryTimes;
 		}
-
 	}
 
 }

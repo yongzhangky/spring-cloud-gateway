@@ -28,6 +28,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -40,8 +41,7 @@ import static io.kyligence.kap.gateway.constant.KylinRouteConstant.PREDICATE_ARG
 @EnableScheduling
 public class RefreshRouteTableScheduler implements ApplicationEventPublisherAware {
 
-	private static final Logger logger = LoggerFactory
-			.getLogger(RefreshRouteTableScheduler.class);
+	private static final Logger logger = LoggerFactory.getLogger(RefreshRouteTableScheduler.class);
 
 	protected ApplicationEventPublisher publisher;
 
@@ -176,8 +176,7 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 
 		if (CollectionUtils.isNotEmpty(errorList)) {
 			checkResult = true;
-			errorList.stream().forEach(
-					kylinRouteRaw -> logger.error("Error Route: {}", kylinRouteRaw));
+			errorList.forEach(kylinRouteRaw -> logger.error("Error Route: {}", kylinRouteRaw));
 		}
 
 		return checkResult;
@@ -206,12 +205,31 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 		return false;
 	}
 
+	private boolean isNullExist(Collection objectList) {
+		if (null == objectList) {
+			return true;
+		}
+
+		for (Object obj : objectList) {
+			if (null == obj) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	@Scheduled(cron = "${kylin.gateway.route-table.refresh-cron}")
 	public synchronized void run() {
 		try {
 			List<KylinRouteRaw> routeRawList = this.routeTableReader.list();
 			if (CollectionUtils.isEmpty(routeRawList)) {
 				// do not permit to clear route table
+				logger.error("Failed to refresh route table, cause by new route table is empty!");
+				return;
+			}
+
+			if (isNullExist(routeRawList)) {
+				logger.error("Failed to refresh route table, cause by new route table null exist!");
 				return;
 			}
 
@@ -220,6 +238,7 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 			}
 
 			if (isRawRouteTableIllegal(routeRawList)) {
+				logger.error("Failed to refresh route table, cause by new route table illegal!");
 				return;
 			}
 
@@ -254,8 +273,7 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 			this.oldRouteRawList = routeRawList;
 			logger.info("Update route table is success ...");
 		} catch (Exception e) {
-			logger.error("Failed to get route table from {}!",
-					routeTableReader.getClass(), e);
+			logger.error("Failed to get route table from {}!", routeTableReader.getClass(), e);
 		}
 
 	}

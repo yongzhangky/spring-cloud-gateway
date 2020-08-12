@@ -14,13 +14,12 @@ import java.util.Objects;
 @Component
 @Slf4j
 public class KylinPing implements IPing {
-	private static final String URL_PREFIX = "/";
-	private static final String HEALTH_URL_PREFIX = "http://%s";
+	private static final String HEALTH_URL_FROMAT = "http://%s%s";
 
 	@Autowired
 	private RestTemplate restTemplate;
 
-	@Value("${kylin.gateway.health.check-url}")
+	@Value("${kylin.gateway.health.check-url:/kylin/api/health}")
 	private String healthUrl;
 
 	@Override
@@ -28,10 +27,7 @@ public class KylinPing implements IPing {
 		if (Objects.isNull(server)) {
 			return false;
 		}
-		if (!healthUrl.startsWith(URL_PREFIX)) {
-			healthUrl = URL_PREFIX.concat(healthUrl);
-		}
-		String healthCheckUrl = String.format(HEALTH_URL_PREFIX, server.getId()).concat(healthUrl);
+		String healthCheckUrl = String.format(HEALTH_URL_FROMAT, server.getId(), healthUrl);
 		try {
 			ResponseEntity<String> responseEntity = restTemplate.getForEntity(healthCheckUrl, String.class);
 			if (responseEntity.getStatusCode().is2xxSuccessful()) {

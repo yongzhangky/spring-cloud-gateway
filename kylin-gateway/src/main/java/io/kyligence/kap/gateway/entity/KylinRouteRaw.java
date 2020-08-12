@@ -38,13 +38,20 @@ public class KylinRouteRaw {
 		this.cluster = kylinRouteDO.getCluster();
 		this.stringBackends = kylinRouteDO.getBackends();
 		try {
-			List<String> instances = OBJECT_MAPPER.readValue(kylinRouteDO.getBackends(),
-					List.class);
+			List<String> instances = OBJECT_MAPPER.readValue(kylinRouteDO.getBackends(), List.class);
 			backends = instances.stream().map(Server::new).collect(Collectors.toList());
-		}
-		catch (JsonProcessingException e) {
+		} catch (JsonProcessingException e) {
 			log.error("Failed to read backends.", e);
 		}
+	}
+
+	public static KylinRouteRaw convert(KylinRouteDO kylinRouteDO) {
+		if (null == kylinRouteDO) {
+			log.error("Failed to convert KylinRouteDO to KylinRouteRaw, cause by kylinRouteDO is null!");
+			return null;
+		}
+
+		return new KylinRouteRaw(kylinRouteDO);
 	}
 
 	@Override
