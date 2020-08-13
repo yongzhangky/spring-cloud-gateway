@@ -53,6 +53,6 @@ kylin:
       password: passw0rd
       table-name: km_route_table
 
-management.endpoints.web.exposure.include: health, gateway
+management.endpoints.web.exposure.include: health, kylin-gateway
 
 server.port: 7777

@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.gateway.filter.LoadBalancerClientFilter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -40,8 +42,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 /**
  * @author Spencer Gibb
  */
-@RestControllerEndpoint(id = "gateway")
+@RestControllerEndpoint(id = "kylin-gateway")
 public class GatewayControllerEndpoint extends AbstractGatewayControllerEndpoint {
+
+	@Autowired
+	private LoadBalancerClientFilter loadBalancerClientFilter;
 
 	public GatewayControllerEndpoint(List<GlobalFilter> globalFilters,
 			List<GatewayFilterFactory> gatewayFilters,
@@ -76,6 +81,11 @@ public class GatewayControllerEndpoint extends AbstractGatewayControllerEndpoint
 
 		r.put("filters", filters);
 		return r;
+	}
+
+	@GetMapping("/lb")
+	public Mono<Map<String, Object>> lb() {
+		return Mono.just(loadBalancerClientFilter.getLoadBalancerServers());
 	}
 
 	@GetMapping("/routes/{id}")

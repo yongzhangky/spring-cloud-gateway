@@ -86,7 +86,7 @@ public class AbstractGatewayControllerEndpoint implements ApplicationEventPublis
 
 	// TODO: Add uncommited or new but not active routes endpoint
 
-	@PostMapping("/refresh")
+	//@PostMapping("/refresh")
 	public Mono<Void> refresh() {
 		this.publisher.publishEvent(new RefreshRoutesEvent(this));
 		return Mono.empty();
@@ -126,7 +126,7 @@ public class AbstractGatewayControllerEndpoint implements ApplicationEventPublis
 	 * predicates:='["Host=**.apiaddrequestheader.org", "Path=/headers"]'
 	 * filters:='["AddRequestHeader=X-Request-ApiFoo, ApiBar"]'
 	 */
-	@PostMapping("/routes/{id}")
+	//@PostMapping("/routes/{id}")
 	@SuppressWarnings("unchecked")
 	public Mono<ResponseEntity<Object>> save(@PathVariable String id,
 			@RequestBody RouteDefinition route) {
@@ -159,7 +159,7 @@ public class AbstractGatewayControllerEndpoint implements ApplicationEventPublis
 		return hasValidFilterDefinitions && hasValidPredicateDefinitions;
 	}
 
-	@DeleteMapping("/routes/{id}")
+	//@DeleteMapping("/routes/{id}")
 	public Mono<ResponseEntity<Object>> delete(@PathVariable String id) {
 		return this.routeDefinitionWriter.delete(Mono.just(id))
 				.then(Mono.defer(() -> Mono.just(ResponseEntity.ok().build())))
