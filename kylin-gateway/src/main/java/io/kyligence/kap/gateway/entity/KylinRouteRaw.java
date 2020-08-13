@@ -4,14 +4,18 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netflix.loadbalancer.Server;
 import io.kyligence.kap.gateway.persistent.domain.KylinRouteDO;
+import io.kyligence.kap.gateway.persistent.domain.RouteDO;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Data
 @Slf4j
+@NoArgsConstructor
 public class KylinRouteRaw {
 
 	private long id;
@@ -52,6 +56,23 @@ public class KylinRouteRaw {
 		}
 
 		return new KylinRouteRaw(kylinRouteDO);
+	}
+
+	public static KylinRouteRaw convert(RouteDO routeDO) {
+		if (null == routeDO) {
+			return null;
+		}
+
+		KylinRouteRaw kylinRouteRaw = new KylinRouteRaw();
+
+		kylinRouteRaw.setId(routeDO.getId());
+		kylinRouteRaw.setType(routeDO.getType());
+		kylinRouteRaw.setProject(routeDO.getProject());
+		kylinRouteRaw.setResourceGroup(routeDO.getResourceGroup());
+		kylinRouteRaw.setStringBackends(Arrays.toString(routeDO.getBackends().toArray()));
+		kylinRouteRaw.setBackends(routeDO.getBackends().stream().map(Server::new).collect(Collectors.toList()));
+
+		return kylinRouteRaw;
 	}
 
 	@Override

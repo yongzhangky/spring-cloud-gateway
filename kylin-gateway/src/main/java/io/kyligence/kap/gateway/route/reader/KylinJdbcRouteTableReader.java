@@ -1,4 +1,4 @@
-package io.kyligence.kap.gateway.route;
+package io.kyligence.kap.gateway.route.reader;
 
 import io.kyligence.kap.gateway.entity.KylinRouteRaw;
 import io.kyligence.kap.gateway.persistent.KylinRouteRowMapper;
