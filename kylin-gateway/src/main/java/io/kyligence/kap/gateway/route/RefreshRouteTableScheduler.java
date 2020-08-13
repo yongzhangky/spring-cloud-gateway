@@ -151,10 +151,14 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 				return true;
 			}
 
-			if (StringUtils.isBlank(kylinRouteRaw.getProject())
-					|| StringUtils.isBlank(kylinRouteRaw.getResourceGroup())
+			if (StringUtils.isBlank(kylinRouteRaw.getResourceGroup())
 					|| StringUtils.isBlank(kylinRouteRaw.getStringBackends())
 					|| StringUtils.isBlank(kylinRouteRaw.getType())) {
+				return true;
+			}
+
+			if (StringUtils.isBlank(kylinRouteRaw.getProject())
+					&& KylinResourceGroupTypeEnum.valueOf(kylinRouteRaw.getType()) != KylinResourceGroupTypeEnum.GLOBAL) {
 				return true;
 			}
 
