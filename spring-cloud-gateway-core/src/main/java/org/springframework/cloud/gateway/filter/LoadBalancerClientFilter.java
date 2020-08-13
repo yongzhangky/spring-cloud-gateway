@@ -17,7 +17,9 @@
 package org.springframework.cloud.gateway.filter;
 
 import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.netflix.loadbalancer.BaseLoadBalancer;
 import org.apache.commons.logging.Log;
@@ -120,6 +122,10 @@ public class LoadBalancerClientFilter implements GlobalFilter, Ordered {
 
 	public void addResourceGroups(List<BaseLoadBalancer> resourceGroup) {
 		// not to do something
+	}
+
+	public Map<String, Object> getLoadBalancerServers() {
+		return new HashMap<>();
 	}
 
 }

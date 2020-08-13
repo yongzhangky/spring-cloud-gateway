@@ -14,9 +14,11 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.web.server.ServerWebExchange;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import static io.kyligence.kap.gateway.constant.KylinRouteConstant.ASYNC_SUFFIX;
 import static org.springframework.cloud.gateway.support.ServerWebExchangeUtils.GATEWAY_REQUEST_URL_ATTR;
@@ -99,4 +101,8 @@ public class Kylin3XReactiveLoadBalancerClientFilter extends LoadBalancerClientF
 		});
 	}
 
+	@Override
+	public Map<String, Object> getLoadBalancerServers() {
+		return resourceGroups.values().stream().collect(Collectors.toMap(Kylin3XLoadBalancer::getServiceId, value -> Arrays.toString(value.getAllServers().toArray())));
+	}
 }
