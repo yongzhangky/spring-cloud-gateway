@@ -31,8 +31,6 @@ server:
       prefix: access_log
       suffix: .log
 
-management.endpoints.web.exposure.include: health,gateway
-
 kylin:
   gateway:
     route-table:
@@ -48,10 +46,13 @@ kylin:
         interval-seconds: 5
     datasource:
       type: mock
+      route-table-file-path: ${gateway.home}/conf/route_table
       driver-class-name: com.mysql.jdbc.Driver
       url: jdbc:mysql://10.3.1.17:3306/leotest
       username: root
       password: passw0rd
       table-name: km_route_table
+
+management.endpoints.web.exposure.include: health, gateway
 
 server.port: 7777
