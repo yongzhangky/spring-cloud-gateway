@@ -79,7 +79,7 @@ public class KylinRouteRaw {
 	public String toString() {
 		return "KylinRouteRaw{" + "id=" + id + ", backends='" + stringBackends + '\''
 				+ ", project='" + project + '\'' + ", resourceGroup='" + resourceGroup
-				+ '\'' + ", type='" + type + '\'' + ", cluster='" + cluster + '\'' + '}';
+				+ '\'' + ", type='" + type + '\'' + '}';
 	}
 
 }
