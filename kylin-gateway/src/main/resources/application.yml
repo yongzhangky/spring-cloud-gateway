@@ -38,6 +38,7 @@ kylin:
     ke:
       version: 3x
     health:
+      check-url: /kylin/api/health
       rest-template:
         connect-timeout: 5000
         read-timeout: 5000
