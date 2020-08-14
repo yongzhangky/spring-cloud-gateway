@@ -30,6 +30,8 @@ public class KylinRouteRaw {
 
 	private String type;
 
+	private int order = 0;
+
 	private String cluster;
 
 	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -67,6 +69,7 @@ public class KylinRouteRaw {
 
 		kylinRouteRaw.setId(routeDO.getId());
 		kylinRouteRaw.setType(routeDO.getType());
+		kylinRouteRaw.setOrder(routeDO.getOrder());
 		kylinRouteRaw.setProject(routeDO.getProject());
 		kylinRouteRaw.setResourceGroup(routeDO.getResourceGroup());
 		kylinRouteRaw.setStringBackends(Arrays.toString(routeDO.getBackends().toArray()));

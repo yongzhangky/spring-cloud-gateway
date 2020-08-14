@@ -25,4 +25,6 @@ public class RouteDO {
 
 	private String type;
 
+	private int order = 0;
+
 }

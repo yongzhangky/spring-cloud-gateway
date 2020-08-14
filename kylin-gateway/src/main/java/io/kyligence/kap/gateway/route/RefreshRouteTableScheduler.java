@@ -31,7 +31,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static io.kyligence.kap.gateway.constant.KylinRouteConstant.DEFAULT_RESOURCE_GROUP;
@@ -119,7 +118,7 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 			case CUBE:
 				predicateDefinition.setName(KYLIN_ROUTE_PREDICATE);
 				predicateDefinition.getArgs().put(PREDICATE_ARG_KEY_0, routeRaw.getProject());
-				routeDefinition.setOrder(0);
+				routeDefinition.setOrder(routeRaw.getOrder());
 				break;
 			case GLOBAL:
 				predicateDefinition.setName("Path");
@@ -146,29 +145,24 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 	private boolean isRawRouteTableIllegal(List<KylinRouteRaw> routeRawList) {
 		boolean checkResult = false;
 
+		if (routeRawList.size() > routeRawList.stream().map(KylinRouteRaw::getId).distinct().count()) {
+			logger.error("Route table contain same id!");
+			return true;
+		}
+
 		List<KylinRouteRaw> errorList = routeRawList.stream().filter(kylinRouteRaw -> {
-			if (kylinRouteRaw.getId() < 0) {
+			if (StringUtils.isBlank(kylinRouteRaw.getStringBackends())) {
 				return true;
 			}
 
-			if (StringUtils.isBlank(kylinRouteRaw.getResourceGroup())
-					|| StringUtils.isBlank(kylinRouteRaw.getStringBackends())
-					|| StringUtils.isBlank(kylinRouteRaw.getType())) {
+			try {
+				KylinResourceGroupTypeEnum.valueOf(kylinRouteRaw.getType());
+			} catch (IllegalArgumentException e) {
 				return true;
 			}
 
 			if (StringUtils.isBlank(kylinRouteRaw.getProject())
 					&& KylinResourceGroupTypeEnum.valueOf(kylinRouteRaw.getType()) != KylinResourceGroupTypeEnum.GLOBAL) {
-				return true;
-			}
-
-			try {
-				URI uri = new URI(getStringURI(kylinRouteRaw.getResourceGroup()));
-				if (Objects.isNull(uri.getHost()) || Objects.isNull(uri.getAuthority())
-						|| Objects.isNull(uri.getScheme())) {
-					return true;
-				}
-			} catch (URISyntaxException e) {
 				return true;
 			}
 

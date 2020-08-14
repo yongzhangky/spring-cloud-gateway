@@ -6,7 +6,7 @@ spring:
   cloud:
     gateway:
       httpclient:
-        connectTimeout: 3000
+        connectTimeout: 15000
         responseTimeout: 480000
 
 logging:

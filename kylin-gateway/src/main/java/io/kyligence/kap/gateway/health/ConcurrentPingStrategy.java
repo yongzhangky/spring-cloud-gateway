@@ -3,8 +3,10 @@ package io.kyligence.kap.gateway.health;
 import com.netflix.loadbalancer.IPing;
 import com.netflix.loadbalancer.IPingStrategy;
 import com.netflix.loadbalancer.Server;
+import io.kyligence.kap.gateway.event.Kylin3XRefreshRoutesEvent;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationListener;
 
 import java.util.Map;
 import java.util.Objects;
@@ -21,7 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Data
-public class ConcurrentPingStrategy implements IPingStrategy {
+public class ConcurrentPingStrategy implements IPingStrategy, ApplicationListener<Kylin3XRefreshRoutesEvent> {
 
 	private Map<Server, AtomicInteger> serversStatus = new ConcurrentHashMap<>();
 
@@ -68,6 +70,11 @@ public class ConcurrentPingStrategy implements IPingStrategy {
 		return results;
 	}
 
+	@Override
+	public void onApplicationEvent(Kylin3XRefreshRoutesEvent event) {
+		serversStatus.clear();
+	}
+
 	private class CheckServerTask implements Callable<Boolean> {
 
 		private IPing ping;
@@ -82,12 +89,17 @@ public class ConcurrentPingStrategy implements IPingStrategy {
 		@Override
 		public Boolean call() {
 			serversStatus.putIfAbsent(server, new AtomicInteger(0));
+			AtomicInteger errorTimes = serversStatus.get(server);
+			if (null == errorTimes) {
+				// for clear servers
+				return false;
+			}
 
 			try {
 				boolean isAlive = ping.isAlive(server);
 				if (isAlive) {
-					if (serversStatus.get(server).get() > 0) {
-						serversStatus.get(server).set(0);
+					if (errorTimes.get() > 0) {
+						errorTimes.set(0);
 					}
 					return true;
 				}
@@ -95,7 +107,7 @@ public class ConcurrentPingStrategy implements IPingStrategy {
 				log.error("Failed to ping server: {}", server, e);
 			}
 
-			return serversStatus.get(server).incrementAndGet() < retryTimes;
+			return errorTimes.incrementAndGet() < retryTimes;
 		}
 	}
 
