@@ -1,2 +1,4 @@
-{"id":4, "backends":["10.1.2.56:7070"], "project":"p1", "resourceGroup":"common_query_1", "type":"CUBE"}
-{"id":111, "backends":["www.baidu.com"], "resourceGroup":"default", "type":"GLOBAL"}
+{"id":4, "backends":["10.1.2.56:7070"], "project":"p1", "resourceGroup":"common_query_1", "type":"ASYNC"}
+{"id":5, "backends":["10.1.2.56:7070"], "project":"p1", "resourceGroup":"common_query_2", "type":"CUBE"}
+{"id":6, "backends":["10.1.2.56:7070"], "project":"p2", "resourceGroup":"common_query_3", "order": 10 , "type":"CUBE"}
+{"id":1, "backends":["10.1.2.56:7070"], "resourceGroup":"default", "type":"GLOBAL"}
