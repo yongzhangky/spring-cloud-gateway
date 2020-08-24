@@ -198,7 +198,7 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 		return false;
 	}
 
-	@Scheduled(cron = "${kylin.gateway.route-table.refresh-cron}")
+	@Scheduled(cron = "${kylin.gateway.route.refresh-cron}")
 	public synchronized void run() {
 		try {
 			List<KylinRouteRaw> routeRawList = routeTableReader.list();

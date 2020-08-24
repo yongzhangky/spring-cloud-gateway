@@ -5,6 +5,9 @@ spring:
     enabled: false
   cloud:
     gateway:
+      loadbalancer:
+        use404: true
+        queryRouteDefault: ${kylin.gateway.route.query-route-default}
       httpclient:
         connectTimeout: 15000
         responseTimeout: 480000
@@ -33,8 +36,9 @@ server:
 
 kylin:
   gateway:
-    route-table:
+    route:
       refresh-cron: 0/3 * * * * *
+      query-route-default: false
     ke:
       version: 3x
     health:

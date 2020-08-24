@@ -20,7 +20,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static io.kyligence.kap.gateway.constant.KylinRouteConstant.ASYNC_SUFFIX;
+import static io.kyligence.kap.gateway.constant.KylinRouteConstant.ASYNC_QUERY_SUFFIX;
+import static io.kyligence.kap.gateway.constant.KylinRouteConstant.DEFAULT_RESOURCE_GROUP;
+import static io.kyligence.kap.gateway.constant.KylinRouteConstant.QUERY_SUFFIX;
 import static org.springframework.cloud.gateway.support.ServerWebExchangeUtils.GATEWAY_REQUEST_URL_ATTR;
 
 public class Kylin3XReactiveLoadBalancerClientFilter extends LoadBalancerClientFilter
@@ -61,14 +63,33 @@ public class Kylin3XReactiveLoadBalancerClientFilter extends LoadBalancerClientF
 		}
 
 		ServiceInstance serviceInstance = null;
-		if (uri.getPath().endsWith(ASYNC_SUFFIX)) {
-			serviceInstance = choose(
-					AsyncQueryUtil.buildAsyncQueryServiceId(uri.getAuthority()),
-					AsyncQueryUtil.ASYNC_QUERY_SUFFIX_TAG);
+		if (isQueryRequest(uri)) {
+			if (isRoute2Default(uri)) {
+				if (!properties.isQueryRouteDefault()) {
+					return null;
+				}
+			} else {
+				if (isAsyncQueryRequest(uri)) {
+					serviceInstance = choose(
+							AsyncQueryUtil.buildAsyncQueryServiceId(uri.getAuthority()),
+							AsyncQueryUtil.ASYNC_QUERY_SUFFIX_TAG);
+				}
+			}
 		}
 
-		return serviceInstance != null ? serviceInstance
-				: choose(uri.getAuthority(), null);
+		return serviceInstance != null ? serviceInstance : choose(uri.getAuthority(), null);
+	}
+
+	private boolean isAsyncQueryRequest(URI uri) {
+		return uri.getPath().endsWith(ASYNC_QUERY_SUFFIX);
+	}
+
+	private boolean isQueryRequest(URI uri) {
+		return uri.getPath().endsWith(QUERY_SUFFIX) || isAsyncQueryRequest(uri);
+	}
+
+	private boolean isRoute2Default(URI uri) {
+		return DEFAULT_RESOURCE_GROUP.equals(uri.getAuthority());
 	}
 
 	@Override
