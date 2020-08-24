@@ -55,7 +55,7 @@ public class LoadBalancerClientFilter implements GlobalFilter, Ordered {
 
 	protected final LoadBalancerClient loadBalancer;
 
-	private LoadBalancerProperties properties;
+	protected LoadBalancerProperties properties;
 
 	public LoadBalancerClientFilter(LoadBalancerClient loadBalancer,
 			LoadBalancerProperties properties) {

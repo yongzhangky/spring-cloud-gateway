@@ -18,13 +18,13 @@
 	</appender>
 
 	<!-- The level of these packages inherits root does not take effect -->
-	<logger name="reactor.netty.resources" level="INFO" additivity="false"/>
-	<logger name="reactor.netty.http" level="INFO" additivity="false" />
-	<logger name="com.netflix.loadbalancer" level="INFO" additivity="false"/>
-	<logger name="reactor.netty.channel" level="INFO" additivity="false"/>
-	<logger name="org.springframework.cloud.gateway.handler" level="INFO" additivity="false"/>
-	<logger name="org.springframework.cloud.gateway.filter" level="INFO" additivity="false"/>
-	<logger name="org.springframework.cloud.gateway.route" level="INFO" additivity="false"/>
+	<logger name="reactor.netty.resources" level="INFO" additivity="true"/>
+	<logger name="reactor.netty.http" level="INFO" additivity="true" />
+	<logger name="com.netflix.loadbalancer" level="INFO" additivity="true"/>
+	<logger name="reactor.netty.channel" level="INFO" additivity="true"/>
+	<logger name="org.springframework.cloud.gateway.handler" level="INFO" additivity="true"/>
+	<logger name="org.springframework.cloud.gateway.filter" level="INFO" additivity="true"/>
+	<logger name="org.springframework.cloud.gateway.route" level="INFO" additivity="true"/>
 
 	<!-- access log -->
 	<appender name="ACCESS-LOG" class="ch.qos.logback.core.rolling.RollingFileAppender">

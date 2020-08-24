@@ -26,6 +26,8 @@ public class LoadBalancerProperties {
 
 	private boolean use404;
 
+	private boolean queryRouteDefault;
+
 	public boolean isUse404() {
 		return use404;
 	}
@@ -34,4 +36,11 @@ public class LoadBalancerProperties {
 		this.use404 = use404;
 	}
 
+	public boolean isQueryRouteDefault() {
+		return queryRouteDefault;
+	}
+
+	public void setQueryRouteDefault(boolean queryRouteDefault) {
+		this.queryRouteDefault = queryRouteDefault;
+	}
 }
