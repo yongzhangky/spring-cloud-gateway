@@ -38,7 +38,7 @@ kylin:
   gateway:
     route:
       refresh-cron: 0/3 * * * * *
-      query-route-default: false
+      query-route-default: true
     ke:
       version: 3x
     health:
