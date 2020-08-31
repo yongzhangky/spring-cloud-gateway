@@ -43,7 +43,7 @@ public class ConcurrentPingStrategy implements IPingStrategy, ApplicationListene
 	@Override
 	public boolean[] pingServers(IPing ping, Server[] servers) {
 		if (servers.length < 1) {
-			log.error("Ping servers is empty!");
+			log.warn("Ping servers is empty!");
 			return new boolean[]{false};
 		}
 
