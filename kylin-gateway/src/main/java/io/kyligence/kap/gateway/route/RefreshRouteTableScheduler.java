@@ -77,8 +77,16 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 		this.publisher = publisher;
 	}
 
+	private String project2ServiceId(String project) {
+		if (StringUtils.isBlank(project)) {
+			return project;
+		}
+
+		return project.replace('_', '-');
+	}
+
 	private String getStringURI(String project) {
-		return "lb://" + project.replace('_', '-');
+		return "lb://" + project2ServiceId(project);
 	}
 
 	private String addKylinHeader(String project) {
@@ -86,7 +94,7 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 	}
 
 	private String getServiceId(KylinRouteRaw routeRaw, boolean skipAsync) {
-		String serviceId = addKylinHeader(routeRaw.getProject());
+		String serviceId = addKylinHeader(project2ServiceId(routeRaw.getProject()));
 		switch (KylinResourceGroupTypeEnum.valueOf(routeRaw.getType())) {
 			case GLOBAL:
 				serviceId = DEFAULT_RESOURCE_GROUP;
