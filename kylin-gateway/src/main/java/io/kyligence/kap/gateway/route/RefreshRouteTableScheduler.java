@@ -31,6 +31,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static io.kyligence.kap.gateway.constant.KylinRouteConstant.DEFAULT_RESOURCE_GROUP;
@@ -82,19 +83,15 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 			return project;
 		}
 
-		return project.replace('_', '-');
+		return UUID.nameUUIDFromBytes(project.getBytes()).toString().substring(0, 9) + project.replace('_', '-');
 	}
 
-	private String getStringURI(String project) {
-		return "lb://" + project2ServiceId(project);
-	}
-
-	private String addKylinHeader(String project) {
-		return "kylin-" + project;
+	private String getStringURI(String serviceId) {
+		return "lb://" + serviceId;
 	}
 
 	private String getServiceId(KylinRouteRaw routeRaw, boolean skipAsync) {
-		String serviceId = addKylinHeader(project2ServiceId(routeRaw.getProject()));
+		String serviceId = project2ServiceId(routeRaw.getProject());
 		switch (KylinResourceGroupTypeEnum.valueOf(routeRaw.getType())) {
 			case GLOBAL:
 				serviceId = DEFAULT_RESOURCE_GROUP;

@@ -15,6 +15,7 @@ import org.springframework.web.server.ServerWebExchange;
 
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -108,7 +109,9 @@ public class Kylin3XReactiveLoadBalancerClientFilter extends LoadBalancerClientF
 			}
 		});
 
+		Collection<Kylin3XLoadBalancer> oldResourceGroups = resourceGroups.values();
 		resourceGroups = newResourceGroups;
+		oldResourceGroups.forEach(Kylin3XLoadBalancer::shutdown);
 	}
 
 	@Override
