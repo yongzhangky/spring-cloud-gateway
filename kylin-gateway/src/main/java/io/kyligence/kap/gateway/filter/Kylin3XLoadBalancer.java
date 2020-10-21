@@ -9,11 +9,15 @@ import io.kyligence.kap.gateway.health.ConcurrentPingStrategy;
 
 public class Kylin3XLoadBalancer extends BaseLoadBalancer {
 
-	public Kylin3XLoadBalancer(String name, IPing ping, IRule rule, IPingStrategy pingStrategy) {
+	private long mvcc = 0;
+
+	public Kylin3XLoadBalancer(String name, IPing ping, IRule rule, IPingStrategy pingStrategy, long mvcc) {
 		super(name, rule, new LoadBalancerStats(name), ping, pingStrategy);
 		if (pingStrategy instanceof ConcurrentPingStrategy) {
 			setPingInterval(((ConcurrentPingStrategy) pingStrategy).getIntervalSeconds());
 		}
+
+		this.mvcc = mvcc;
 	}
 
 	public String getServiceId() {
@@ -25,4 +29,10 @@ public class Kylin3XLoadBalancer extends BaseLoadBalancer {
 	public void forceQuickPing() {
 		// Nothing to do
 	}
+
+
+	public long getMvcc() {
+		return mvcc;
+	}
+
 }
