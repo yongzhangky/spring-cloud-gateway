@@ -32,6 +32,7 @@ import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static io.kyligence.kap.gateway.constant.KylinRouteConstant.DEFAULT_RESOURCE_GROUP;
@@ -57,6 +58,8 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 
 	@Autowired
 	private IPingStrategy pingStrategy;
+
+	private AtomicLong mvcc = new AtomicLong(0);
 
 	private List<KylinRouteRaw> oldRouteRawList = Lists.newArrayList();
 
@@ -141,7 +144,7 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 
 	private Kylin3XLoadBalancer convert2Kylin3XLoadBalancer(KylinRouteRaw routeRaw) {
 		Kylin3XLoadBalancer kylin3XLoadBalancer =
-				new Kylin3XLoadBalancer(getServiceId(routeRaw, false), ping, new RoundRobinRule(), pingStrategy);
+				new Kylin3XLoadBalancer(getServiceId(routeRaw, false), ping, new RoundRobinRule(), pingStrategy, this.mvcc.get());
 
 		kylin3XLoadBalancer.addServers(routeRaw.getBackends());
 		return kylin3XLoadBalancer;
@@ -253,8 +256,9 @@ public class RefreshRouteTableScheduler implements ApplicationEventPublisherAwar
 					gatewayControllerEndpoint.save(routeDefinition.getId(), routeDefinition).subscribe());
 
 			publisher.publishEvent(new Kylin3XRefreshRoutesEvent(this));
-			this.loadBalancerClientFilter.updateResourceGroups(loadBalancerList);
+			this.loadBalancerClientFilter.updateResourceGroups(loadBalancerList, this.mvcc.get());
 
+			this.mvcc.incrementAndGet();
 			this.oldRouteRawList = routeRawList;
 			logger.info("Update route table is success ...");
 		} catch (Exception e) {

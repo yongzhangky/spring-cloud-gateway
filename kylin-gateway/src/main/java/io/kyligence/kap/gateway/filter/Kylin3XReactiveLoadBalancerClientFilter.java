@@ -99,7 +99,7 @@ public class Kylin3XReactiveLoadBalancerClientFilter extends LoadBalancerClientF
 	}
 
 	@Override
-	public void updateResourceGroups(List<BaseLoadBalancer> updateResourceGroups) {
+	public void updateResourceGroups(List<BaseLoadBalancer> updateResourceGroups, final long mvcc) {
 		ConcurrentHashMap<String, Kylin3XLoadBalancer> newResourceGroups = new ConcurrentHashMap<>();
 
 		updateResourceGroups.forEach(resourceGroup -> {
@@ -111,7 +111,7 @@ public class Kylin3XReactiveLoadBalancerClientFilter extends LoadBalancerClientF
 
 		Collection<Kylin3XLoadBalancer> oldResourceGroups = resourceGroups.values();
 		resourceGroups = newResourceGroups;
-		oldResourceGroups.forEach(Kylin3XLoadBalancer::shutdown);
+		oldResourceGroups.stream().filter(lb -> lb.getMvcc() < mvcc).forEach(Kylin3XLoadBalancer::shutdown);
 	}
 
 	@Override

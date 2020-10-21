@@ -116,7 +116,7 @@ public class LoadBalancerClientFilter implements GlobalFilter, Ordered {
 				((URI) exchange.getAttribute(GATEWAY_REQUEST_URL_ATTR)).getHost());
 	}
 
-	public void updateResourceGroups(List<BaseLoadBalancer> resourceGroup) {
+	public void updateResourceGroups(List<BaseLoadBalancer> resourceGroup, final long mvcc) {
 		// not to do something
 	}
 
