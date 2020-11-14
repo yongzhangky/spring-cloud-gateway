@@ -30,20 +30,18 @@ import java.util.function.Predicate;
 import static org.springframework.cloud.gateway.support.ServerWebExchangeUtils.PROJECTS_KEY;
 import static org.springframework.cloud.gateway.support.ServerWebExchangeUtils.PROJECT_FLAG;
 import static org.springframework.cloud.gateway.support.ServerWebExchangeUtils.PROJECT_KEY;
+import static org.springframework.cloud.gateway.support.ServerWebExchangeUtils.PROJECT_NO_RESOURCE_GROUP_EXCEPTION;
 import static org.springframework.cloud.gateway.support.ServerWebExchangeUtils.READ_REQUEST_BODY_OBJECT_KEY;
 
-public class KylinRoutePredicateFactory
-		extends AbstractRoutePredicateFactory<KylinRoutePredicateFactory.Config> {
-
-	private static final Log log = LogFactory.getLog(KylinRoutePredicateFactory.class);
-
+public class KylinGlobalRoutePredicateFactory extends AbstractRoutePredicateFactory<KylinGlobalRoutePredicateFactory.Config> {
+	private static final Log log = LogFactory.getLog(KylinGlobalRoutePredicateFactory.class);
 
 	private final List<HttpMessageReader<?>> messageReaders;
 
 	private final Class inClass;
 
-	public KylinRoutePredicateFactory() {
-		super(Config.class);
+	public KylinGlobalRoutePredicateFactory() {
+		super(KylinGlobalRoutePredicateFactory.Config.class);
 		this.messageReaders = HandlerStrategies.withDefaults().messageReaders();
 		this.inClass = String.class;
 	}
@@ -60,47 +58,6 @@ public class KylinRoutePredicateFactory
 
 	private void setAttribute(ServerWebExchange exchange, String key, String value) {
 		exchange.getAttributes().put(key, value);
-	}
-
-	private void setProject(ServerWebExchange exchange, String project) {
-		setAttribute(exchange, PROJECT_KEY, project);
-		setAttribute(exchange, PROJECT_FLAG, project);
-	}
-
-	private boolean testBasic(String targetProject, Config config) {
-		if (StringUtils.isBlank(targetProject)) {
-			return false;
-		}
-
-		for (String project : config.getProjects()) {
-			if (targetProject.equalsIgnoreCase(project)) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	private boolean testProjectsAndMark(ServerWebExchange exchange, Config config, List<String> projects) {
-		if (CollectionUtils.isEmpty(projects)) {
-			return false;
-		}
-
-		setProject(exchange, projects.get(0));
-		return testBasic(projects.get(0), config);
-	}
-
-	private boolean testProjectsAndMark(ServerWebExchange exchange, Config config, String project) {
-		if (StringUtils.isBlank(project)) {
-			return false;
-		}
-
-		setProject(exchange, project);
-		return testBasic(project, config);
-	}
-
-	private Predicate<String> testBodyPredicate(Config config) {
-		return project -> testBasic(project, config);
 	}
 
 	private String readProjectFromCacheBody(String cacheBody) {
@@ -133,41 +90,59 @@ public class KylinRoutePredicateFactory
 		return readProjectFromCacheBody(cacheBody.toString());
 	}
 
+	private String getProjectFromProjectList(List<String> projects) {
+		if (CollectionUtils.isEmpty(projects)) {
+			return null;
+		}
+
+		if (StringUtils.isBlank(projects.get(0))) {
+			return null;
+		}
+
+		return projects.get(0);
+	}
+
+	private Mono<Boolean> setProjectNoResourceGroupException(ServerWebExchange exchange, String project) {
+		exchange.getAttributes().put(PROJECT_NO_RESOURCE_GROUP_EXCEPTION, "true");
+		setAttribute(exchange, PROJECT_KEY, project);
+		return Mono.just(true);
+	}
+
 	@Override
 	@SuppressWarnings("unchecked")
-	public AsyncPredicate<ServerWebExchange> applyAsync(Config config) {
-		Predicate predicate = testBodyPredicate(config);
-
+	public AsyncPredicate<ServerWebExchange> applyAsync(KylinGlobalRoutePredicateFactory.Config config) {
 		return new AsyncPredicate<ServerWebExchange>() {
 			@Override
 			public Publisher<Boolean> apply(ServerWebExchange exchange) {
 				if (Objects.nonNull(exchange.getAttribute(PROJECT_FLAG))) {
-					return Mono.just(testBasic(exchange.getAttribute(PROJECT_KEY), config));
+					if (Objects.isNull(exchange.getAttribute(PROJECT_KEY))) {
+						return Mono.just(true);
+					}
+
+					return setProjectNoResourceGroupException(exchange, exchange.getAttribute(PROJECT_KEY));
 				}
 
-				exchange.getAttributes().put(PROJECT_FLAG, "");
-
-				List<String> headerProjects = exchange.getRequest().getHeaders().get(PROJECT_KEY);
-				if (CollectionUtils.isNotEmpty(headerProjects)) {
-					return Mono.just(testProjectsAndMark(exchange, config, headerProjects));
+				if (Boolean.valueOf(exchange.getAttribute(READ_REQUEST_BODY_OBJECT_KEY))) {
+					return Mono.just(true);
 				}
 
-				List<String> queryProjects = exchange.getRequest().getQueryParams().get(PROJECT_KEY);
-				if (CollectionUtils.isNotEmpty(queryProjects)) {
-					return Mono.just(testProjectsAndMark(exchange, config, queryProjects));
+				String headerProject = getProjectFromProjectList(exchange.getRequest().getHeaders().get(PROJECT_KEY));
+				if (Objects.nonNull(headerProject)) {
+					return setProjectNoResourceGroupException(exchange, headerProject);
+				}
+
+				String queryProject = getProjectFromProjectList(exchange.getRequest().getQueryParams().get(PROJECT_KEY));
+				if (Objects.nonNull(queryProject)) {
+					return setProjectNoResourceGroupException(exchange, queryProject);
 				}
 
 				String pathProject = UrlProjectUtil.extractProjectFromUrlPath(exchange);
 				if (StringUtils.isNotBlank(pathProject)) {
-					return Mono.just(testProjectsAndMark(exchange, config, pathProject));
+					return setProjectNoResourceGroupException(exchange, pathProject);
 				}
 
 				if (exchange.getRequest().getMethod() == HttpMethod.GET) {
-					return Mono.just(false);
-				}
-
-				if (Boolean.valueOf(exchange.getAttribute(READ_REQUEST_BODY_OBJECT_KEY))) {
-					return Mono.just(false);
+					return Mono.just(true);
 				}
 
 				exchange.getAttributes().put(READ_REQUEST_BODY_OBJECT_KEY, "true");
@@ -178,23 +153,23 @@ public class KylinRoutePredicateFactory
 								.map(objectValue -> {
 									String project = readProjectFromCacheBody(objectValue);
 									if (Objects.nonNull(project)) {
-										setProject(exchange, project);
+										setProjectNoResourceGroupException(exchange, project);
 									}
 									return Objects.isNull(project) ? "" : project;
-								}).map(project -> predicate.test(project)));
+								}).map(project -> true));
 			}
 
 			@Override
 			public String toString() {
-				return String.format("Projects: %s", Arrays.toString(config.getProjects().toArray()));
+				return String.format("KylinGlobal: %s", Arrays.toString(config.getProjects().toArray()));
 			}
 		};
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Predicate<ServerWebExchange> apply(Config config) {
-		throw new UnsupportedOperationException("KylinRoutePredicateFactory is only async.");
+	public Predicate<ServerWebExchange> apply(KylinGlobalRoutePredicateFactory.Config config) {
+		throw new UnsupportedOperationException("KylinGlobalRoutePredicateFactory is only async.");
 	}
 
 	@Validated
@@ -211,5 +186,4 @@ public class KylinRoutePredicateFactory
 		}
 
 	}
-
 }
