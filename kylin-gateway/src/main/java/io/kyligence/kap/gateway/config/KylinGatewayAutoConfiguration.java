@@ -1,6 +1,8 @@
 package io.kyligence.kap.gateway.config;
 
+import io.kyligence.kap.gateway.exception.KylinErrorAttributes;
 import io.kyligence.kap.gateway.filter.KylinRedirectToGatewayFilter;
+import io.kyligence.kap.gateway.predicate.KylinGlobalRoutePredicateFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -8,6 +10,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.web.reactive.HttpHandlerAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.reactive.WebFluxAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.reactive.error.DefaultErrorAttributes;
 import org.springframework.cloud.gateway.config.GatewayClassPathWarningAutoConfiguration;
 import org.springframework.cloud.gateway.config.GatewayLoadBalancerClientAutoConfiguration;
 import io.kyligence.kap.gateway.predicate.KylinRoutePredicateFactory;
@@ -31,8 +34,18 @@ public class KylinGatewayAutoConfiguration {
 	}
 
 	@Bean
+	public KylinGlobalRoutePredicateFactory kylinGlobalRoutePredicateFactory() {
+		return new KylinGlobalRoutePredicateFactory();
+	}
+
+	@Bean
 	public KylinRedirectToGatewayFilter kylinRedirectToGatewayFilter() {
 		return new KylinRedirectToGatewayFilter();
+	}
+
+	@Bean
+	public DefaultErrorAttributes errorAttributes() {
+		return new KylinErrorAttributes();
 	}
 
 }
