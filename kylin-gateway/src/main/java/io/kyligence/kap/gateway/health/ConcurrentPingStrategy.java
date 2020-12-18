@@ -88,7 +88,7 @@ public class ConcurrentPingStrategy implements IPingStrategy, ApplicationListene
 
 		@Override
 		public Boolean call() {
-			serversStatus.putIfAbsent(server, new AtomicInteger(0));
+			serversStatus.putIfAbsent(server, new AtomicInteger(retryTimes));
 			AtomicInteger errorTimes = serversStatus.get(server);
 			if (null == errorTimes) {
 				// for clear servers
