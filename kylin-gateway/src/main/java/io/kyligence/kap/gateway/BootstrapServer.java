@@ -16,6 +16,7 @@
 
 package io.kyligence.kap.gateway;
 
+import com.netflix.loadbalancer.IPing;
 import com.netflix.loadbalancer.IPingStrategy;
 import io.kyligence.kap.gateway.health.ConcurrentPingStrategy;
 import org.apache.http.client.HttpClient;
@@ -56,8 +57,8 @@ public class BootstrapServer {
 
 	@Bean
 	@ConfigurationProperties(prefix = "kylin.gateway.health.ping-strategy")
-	public IPingStrategy pingStrategy() {
-		return new ConcurrentPingStrategy();
+	public IPingStrategy pingStrategy(IPing ping) {
+		return new ConcurrentPingStrategy(ping);
 	}
 
 }
