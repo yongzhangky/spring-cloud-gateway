@@ -1,5 +1,6 @@
 package io.kyligence.kap.gateway.route;
 
+import com.netflix.loadbalancer.Server;
 import io.kyligence.kap.gateway.config.GlobalConfig;
 import io.kyligence.kap.gateway.constant.KylinGatewayVersion;
 import io.kyligence.kap.gateway.entity.KylinRouteRaw;
@@ -22,9 +23,11 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @ConditionalOnProperty(name = "kylin.gateway.ke.version", havingValue = KylinGatewayVersion.KYLIN_4X)
 @Component
@@ -63,7 +66,8 @@ public class KylinRefreshRouteTableScheduler implements ApplicationEventPublishe
 
 	@PostConstruct
 	private void init() {
-		routeRefresher.scheduleWithFixedDelay(this::run, 0, globalConfig.getRouteRefreshIntervalSeconds(), TimeUnit.SECONDS);
+		this.run();
+		routeRefresher.scheduleWithFixedDelay(this::run, globalConfig.getRouteRefreshIntervalSeconds(), globalConfig.getRouteRefreshIntervalSeconds(), TimeUnit.SECONDS);
 	}
 
 	@Override
@@ -100,7 +104,9 @@ public class KylinRefreshRouteTableScheduler implements ApplicationEventPublishe
 			routeTable.getRouteDefinitionList().forEach(routeDefinition ->
 					gatewayControllerEndpoint.save(routeDefinition.getId(), routeDefinition).subscribe());
 
-			this.publisher.publishEvent(new KylinRefreshRoutesEvent(this));
+			Set<Server> serverSet = routeTable.getLoadBalancerList().stream()
+					.flatMap(loadBalancer -> loadBalancer.getAllServers().stream()).collect(Collectors.toSet());
+			this.publisher.publishEvent(new KylinRefreshRoutesEvent(this, serverSet));
 
 			this.loadBalancerClientFilter.updateResourceGroups(
 					routeTable.getLoadBalancerList(), globalConfig.getLastValidRawRouteTableMvcc().get());

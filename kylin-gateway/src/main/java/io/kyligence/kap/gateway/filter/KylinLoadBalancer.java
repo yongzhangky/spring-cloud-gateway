@@ -6,27 +6,19 @@ import com.netflix.loadbalancer.IPingStrategy;
 import com.netflix.loadbalancer.IRule;
 import com.netflix.loadbalancer.LoadBalancerStats;
 import io.kyligence.kap.gateway.health.ConcurrentPingStrategy;
-import io.micrometer.core.instrument.util.NamedThreadFactory;
-
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
 
 public class KylinLoadBalancer extends BaseLoadBalancer {
-
-	public static final ThreadPoolExecutor threadPoolExecutor =
-			new ThreadPoolExecutor(1, 4, 0, TimeUnit.SECONDS,
-					new LinkedBlockingQueue<>(), new NamedThreadFactory("LoadBalancer-PingTask"));
 
 	private long mvcc = 0;
 
 	private boolean broken = false;
 
+	private static final int DEFAULT_INTERVAL_SECONDS = 1;
+
 	public KylinLoadBalancer(String name, IPing ping, IRule rule, IPingStrategy pingStrategy, long mvcc) {
 		super(name, rule, new LoadBalancerStats(name), null, pingStrategy);
 		if (pingStrategy instanceof ConcurrentPingStrategy) {
-			setPingInterval(((ConcurrentPingStrategy) pingStrategy).getIntervalSeconds());
+			setPingInterval(DEFAULT_INTERVAL_SECONDS);
 		}
 
 		setPing(ping);
@@ -35,7 +27,7 @@ public class KylinLoadBalancer extends BaseLoadBalancer {
 
 	@Override
 	public void forceQuickPing() {
-		threadPoolExecutor.submit(super::forceQuickPing);
+		super.forceQuickPing();
 	}
 
 	public String getServiceId() {

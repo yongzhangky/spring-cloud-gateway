@@ -45,11 +45,11 @@ kylin:
     health:
       check-url: /kylin/api/health
       rest-template:
-        connect-timeout: 5000
+        connect-timeout: 1500
         read-timeout: 5000
       ping-strategy:
         retry-times: 3
-        interval-seconds: 10
+        interval-seconds: 3
     datasource:
       type: file
       route-table-file-path: ${gateway.home}/conf/route_table
