@@ -18,8 +18,8 @@ import java.util.concurrent.atomic.AtomicLong;
 @Component
 public class GlobalConfig {
 
-	@Value(value = "${kylin.gateway.route.refresh-interval:3s}")
-	private String refreshInterval;
+	@Value(value = "${mdx.ping-strategy.interval-seconds:3}")
+	private long refreshInterval;
 
 	@Getter
 	private ImmutableList<KylinRouteRaw> lastValidRawRouteTable = ImmutableList.of();
@@ -28,13 +28,7 @@ public class GlobalConfig {
 	private final AtomicLong lastValidRawRouteTableMvcc = new AtomicLong(0);
 
 	public long getRouteRefreshIntervalSeconds() {
-		long refreshSeconds = 3;
-		try {
-			refreshSeconds = TimeUtil.timeStringAs(refreshInterval, TimeUnit.SECONDS);
-		} catch (Exception e) {
-			log.error("Failed to init route refresh-interval, use 3 seconds !", e);
-		}
-		return refreshSeconds;
+		return refreshInterval;
 	}
 
 	public void setLastValidRawRouteTable(Collection<KylinRouteRaw> rawRouteTable) {

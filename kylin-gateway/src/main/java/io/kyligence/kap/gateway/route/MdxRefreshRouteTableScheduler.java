@@ -6,11 +6,10 @@ import io.kyligence.kap.gateway.constant.KylinGatewayVersion;
 import io.kyligence.kap.gateway.entity.KylinRouteRaw;
 import io.kyligence.kap.gateway.entity.KylinRouteTable;
 import io.kyligence.kap.gateway.event.KylinRefreshRoutesEvent;
-import io.kyligence.kap.gateway.route.handler.RouteTableFilter;
+import io.kyligence.kap.gateway.filter.MdxLoadBalancerClientFilter;
 import io.kyligence.kap.gateway.route.reader.IRouteTableReader;
 import io.kyligence.kap.gateway.route.transformer.RouteTableTransformer;
 import io.micrometer.core.instrument.util.NamedThreadFactory;
-import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,11 +28,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-@ConditionalOnProperty(name = "server.type", havingValue = KylinGatewayVersion.KYLIN_4X)
+@ConditionalOnProperty(name = "server.type", havingValue = KylinGatewayVersion.MDX)
 @Component
-public class KylinRefreshRouteTableScheduler implements ApplicationEventPublisherAware {
+public class MdxRefreshRouteTableScheduler implements ApplicationEventPublisherAware {
 
-	private static final Logger logger = LoggerFactory.getLogger(KylinRefreshRouteTableScheduler.class);
+	private static final Logger logger = LoggerFactory.getLogger(MdxRefreshRouteTableScheduler.class);
 
 	protected ApplicationEventPublisher publisher;
 
@@ -49,14 +48,11 @@ public class KylinRefreshRouteTableScheduler implements ApplicationEventPublishe
 	private GlobalConfig globalConfig;
 
 	@Autowired
-	private List<RouteTableFilter> routeTableFilterList;
-
-	@Autowired
 	private RouteTableTransformer routeTableTransformer;
 
-	public KylinRefreshRouteTableScheduler(IRouteTableReader routeTableReader,
-										   AbstractGatewayControllerEndpoint gatewayControllerEndpoint,
-										   LoadBalancerClientFilter loadBalancerClientFilter) {
+	public MdxRefreshRouteTableScheduler(IRouteTableReader routeTableReader,
+										 AbstractGatewayControllerEndpoint gatewayControllerEndpoint,
+										 LoadBalancerClientFilter loadBalancerClientFilter) {
 		this.routeTableReader = routeTableReader;
 		this.gatewayControllerEndpoint = gatewayControllerEndpoint;
 		this.loadBalancerClientFilter = loadBalancerClientFilter;
@@ -78,18 +74,6 @@ public class KylinRefreshRouteTableScheduler implements ApplicationEventPublishe
 	private synchronized void run() {
 		try {
 			List<KylinRouteRaw> rawRouteTable = routeTableReader.list();
-
-			for (RouteTableFilter routeTableFilter : routeTableFilterList) {
-				if (routeTableFilter.filter(rawRouteTable)) {
-					if (CollectionUtils.isNotEmpty(routeTableFilter.getErrorMessage())) {
-						routeTableFilter.getErrorMessage().forEach(logger::error);
-					}
-					return;
-				}
-			}
-
-			logger.info("Start to update route table ...");
-
 			KylinRouteTable routeTable = routeTableTransformer.convert(rawRouteTable);
 			if (routeTable.isBroken()) {
 				logger.error("Failed to convert rawRouteTable to kylinRouteTable!");
@@ -113,8 +97,6 @@ public class KylinRefreshRouteTableScheduler implements ApplicationEventPublishe
 
 			globalConfig.getLastValidRawRouteTableMvcc().incrementAndGet();
 			globalConfig.setLastValidRawRouteTable(rawRouteTable);
-
-			logger.info("Update route table is success ...");
 		} catch (Exception e) {
 			logger.error("Failed to get route table from {}!", routeTableReader.getClass(), e);
 		}

@@ -41,7 +41,7 @@ import static io.kyligence.kap.gateway.constant.KylinRouteConstant.DEFAULT_RESOU
 import static io.kyligence.kap.gateway.constant.KylinRouteConstant.KYLIN_ROUTE_PREDICATE;
 import static io.kyligence.kap.gateway.constant.KylinRouteConstant.PREDICATE_ARG_KEY_0;
 
-@ConditionalOnProperty(name = "kylin.gateway.ke.version", havingValue = KylinGatewayVersion.KYLIN_3X)
+@ConditionalOnProperty(name = "server.type", havingValue = KylinGatewayVersion.KYLIN_3X)
 @Component
 @EnableScheduling
 public class Kylin3xRefreshRouteTableScheduler implements ApplicationEventPublisherAware {

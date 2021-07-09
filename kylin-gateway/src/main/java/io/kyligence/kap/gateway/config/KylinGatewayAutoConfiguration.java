@@ -2,6 +2,7 @@ package io.kyligence.kap.gateway.config;
 
 import io.kyligence.kap.gateway.exception.KylinErrorAttributes;
 import io.kyligence.kap.gateway.filter.KylinRedirectToGatewayFilter;
+import io.kyligence.kap.gateway.filter.MdxFilter;
 import io.kyligence.kap.gateway.predicate.KylinGlobalRoutePredicateFactory;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
@@ -39,8 +40,15 @@ public class KylinGatewayAutoConfiguration {
 	}
 
 	@Bean
+	@ConditionalOnProperty(name = "server.type", havingValue = "ke")
 	public KylinRedirectToGatewayFilter kylinRedirectToGatewayFilter() {
 		return new KylinRedirectToGatewayFilter();
+	}
+
+	@Bean
+	@ConditionalOnProperty(name = "server.type", havingValue = "mdx")
+	public MdxFilter mdxFilter() {
+		return new MdxFilter();
 	}
 
 	@Bean

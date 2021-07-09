@@ -26,7 +26,9 @@
 
 CURRENT_HOME=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
 GATEWAY_HOME=`dirname ${CURRENT_HOME}`
-
+gateway_properties="${GATEWAY_HOME}/conf/application.yml"
+GATEWAY_PORT=$(sed '/^server.port:/!d;s/.*://' "${gateway_properties}")
+GATEWAY_PORT=$(eval echo "$GATEWAY_PORT")
 function quit {
     echo "$@"
     exit 1
@@ -41,16 +43,29 @@ function start_gateway() {
     fi
     echo `date '+%Y-%m-%d %H:%M:%S '`"Starting Gateway..."
 
-    gateway_properties="${GATEWAY_HOME}/conf/gateway.properties"
+    gateway_properties="${GATEWAY_HOME}/conf/application.yml"
 
     cd ${GATEWAY_HOME}/server
 
-    nohup java -Xms4g -Xmx4g -Dspring.profiles.active=prod -Dreactor.netty.http.server.accessLogEnabled=true -Dgateway.home=${GATEWAY_HOME} -Dfile.encoding=UTF-8 -Dlogging.path=${GATEWAY_HOME}/logs -Dspring.config.additional-location=${gateway_properties} -Dloader.path="${GATEWAY_HOME}/server/jars" -jar gateway.jar >> ${GATEWAY_HOME}/logs/gateway.log 2>&1 < /dev/null & echo $! > ${GATEWAY_HOME}/pid &
+    JAVA_OPTS="-Xms4g -Xmx4g -XX:+UseG1GC -XX:G1HeapRegionSize=4m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
+    JAVA_OPTS="$JAVA_OPTS -XX:+PrintGCDateStamps -XX:+PrintGCDetails -Xloggc:${GATEWAY_HOME}/logs/gc.log -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${GATEWAY_HOME}/logs/heapdump.hprof"
+    nohup java ${JAVA_OPTS} -Dspring.profiles.active=prod -Dreactor.netty.http.server.accessLogEnabled=true -Dgateway.home=${GATEWAY_HOME} -Dfile.encoding=UTF-8 -Dlogging.path=${GATEWAY_HOME}/logs -Dspring.config.additional-location=${gateway_properties} -Dloader.path="${GATEWAY_HOME}/server/jars" -jar gateway.jar >> ${GATEWAY_HOME}/logs/gateway.log 2>&1 < /dev/null & echo $! > ${GATEWAY_HOME}/pid &
 
     PID=`cat ${GATEWAY_HOME}/pid`
     echo $(date "+%Y-%m-%d %H:%M:%S ") "new Gateway process pid is "${PID} >> ${GATEWAY_HOME}/logs/gateway.log
     echo "Gateway is starting. It may take a while."
-    echo "You may also check status via: PID:`cat ${GATEWAY_HOME}/pid`, or Log: ${GATEWAY_HOME}/logs/gateway.log"
+    retry=0
+    while ! curl -k -s -f -o /dev/null http://127.0.0.1:"${GATEWAY_PORT}"/api/gateway/health
+    do
+       printf "."; sleep 1; let retry=retry+1
+       if [ $retry -gt 30 ]; then
+           echo ""
+           echo "Gateway failed to start, please check logs/gateway.log for the details."
+           exit 1
+       fi
+    done
+    echo ""
+    echo "Gateway is started, You can start use."
 }
 
 function stop_gateway() {
@@ -80,6 +95,15 @@ function stop_gateway() {
     fi
 }
 
+function reload () {
+    result=$(curl -s -X GET --header 'Accept: application/json' http://127.0.0.1:"${GATEWAY_PORT}"/api/gateway/admin/reload)
+    if [[ "${result}" =~ "success" ]]; then
+         echo "Upgrade config success..."
+    else
+         echo "Upgrade config failed, Please check gateway.log or whether server is normal..."
+    fi
+}
+
 if [[ "$1" == "start" ]]; then
     start_gateway
 elif [[ "$1" == "stop" ]]; then
@@ -88,6 +112,9 @@ elif [[ "$1" == "restart" ]]; then
     echo `date '+%Y-%m-%d %H:%M:%S '`"Restarting Gateway..."
     stop_gateway
     start_gateway
+elif [[ "$1" == "reload" ]]; then
+    echo `date '+%Y-%m-%d %H:%M:%S '`"Reload Gateway config..."
+    reload
 else
     quit "Usage: 'gateway.sh start' or 'gateway.sh stop' or 'gateway.sh restart'"
 fi

@@ -1,9 +1,11 @@
 package io.kyligence.kap.gateway.health;
 
+import com.alibaba.fastjson.JSONObject;
 import com.netflix.loadbalancer.IPing;
 import com.netflix.loadbalancer.Server;
 import io.kyligence.kap.gateway.constant.KylinGatewayVersion;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -16,15 +18,21 @@ import java.util.Objects;
 
 @Component
 @Slf4j
-@ConditionalOnProperty(name = "server.type", havingValue = KylinGatewayVersion.KYLIN_4X)
-public class KylinPing implements IPing {
+@ConditionalOnProperty(name = "server.type", havingValue = KylinGatewayVersion.MDX)
+public class MdxPing implements IPing {
 	private static final String HEALTH_URL_FROMAT = "http://%s%s";
 
 	@Autowired
 	private RestTemplate restTemplate;
 
-	@Value("${kylin.gateway.health.check-url:/kylin/api/health}")
+	@Value("${mdx.check-url:/api/system/health}")
 	private String healthUrl;
+
+	@Value("${mdx.check-project:}")
+	private String projectName;
+
+	@Value("${mdx.load_url:/api/system/load}")
+	private String loadUrl;
 
 	@Override
 	public boolean isAlive(Server server) {
@@ -45,7 +53,9 @@ public class KylinPing implements IPing {
 		}
 
 		String healthCheckUrl = String.format(HEALTH_URL_FROMAT, server.getId(), healthUrl);
-
+		if (StringUtils.isNotBlank(projectName)) {
+			healthCheckUrl = healthCheckUrl + "?projectName=" + projectName;
+		}
 		try {
 			ResponseEntity<String> responseEntity = restTemplate.getForEntity(healthCheckUrl, String.class);
 			if (responseEntity.getStatusCode().is2xxSuccessful()) {
@@ -64,5 +74,28 @@ public class KylinPing implements IPing {
 
 		return ErrorLevel.WARN;
 	}
+
+	public Double getServerLoad(Server server) {
+
+		if (Objects.isNull(server)) {
+			return Double.MAX_VALUE;
+		}
+
+		String heathLoadUrl = String.format(HEALTH_URL_FROMAT, server.getId(), loadUrl);
+
+		try {
+			ResponseEntity<String> responseEntity = restTemplate.getForEntity(heathLoadUrl, String.class);
+			if (responseEntity.getStatusCode().is2xxSuccessful()) {
+				String result = responseEntity.getBody();
+				JSONObject jsonObject = JSONObject.parseObject(result);
+				String load = jsonObject.getString("msg");
+				return Double.valueOf(load);
+			}
+		} catch (Exception e) {
+			// Nothing to do
+		}
+		return Double.MAX_VALUE;
+	}
+
 
 }

@@ -8,11 +8,10 @@ import com.netflix.loadbalancer.IPingStrategy;
 import com.netflix.loadbalancer.RoundRobinRule;
 import io.kyligence.kap.gateway.config.GlobalConfig;
 import io.kyligence.kap.gateway.constant.KylinGatewayVersion;
-import io.kyligence.kap.gateway.constant.KylinResourceGroupTypeEnum;
 import io.kyligence.kap.gateway.entity.KylinRouteRaw;
 import io.kyligence.kap.gateway.entity.KylinRouteTable;
-import io.kyligence.kap.gateway.filter.KylinLoadBalancer;
-import io.kyligence.kap.gateway.health.KylinPing;
+import io.kyligence.kap.gateway.filter.MdxLoadBalancer;
+import io.kyligence.kap.gateway.health.MdxPing;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
@@ -28,48 +27,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static io.kyligence.kap.gateway.constant.KylinRouteConstant.DEFAULT_RESOURCE_GROUP;
-import static io.kyligence.kap.gateway.constant.KylinRouteConstant.GLOBAL_RESOURCE_GROUP;
-import static io.kyligence.kap.gateway.constant.KylinRouteConstant.KYLIN_GLOBAL_ROUTE_PREDICATE;
-import static io.kyligence.kap.gateway.constant.KylinRouteConstant.KYLIN_ROUTE_PREDICATE;
-import static io.kyligence.kap.gateway.constant.KylinRouteConstant.PREDICATE_ARG_KEY_0;
+import static io.kyligence.kap.gateway.constant.KylinRouteConstant.*;
 
 @Slf4j
-@ConditionalOnProperty(name = "server.type", havingValue = KylinGatewayVersion.KYLIN_4X)
+@ConditionalOnProperty(name = "server.type", havingValue = KylinGatewayVersion.MDX)
 @Component
-public class StandardRouteTableTransformer implements RouteTableTransformer {
+public class MdxRouteTableTransformer implements RouteTableTransformer {
 
 	@Autowired
 	private GlobalConfig globalConfig;
 
 	@Autowired
-	private KylinPing ping;
+	private MdxPing ping;
 
 	@Autowired
 	private IPingStrategy pingStrategy;
-
-	private String resourceGroup2ServiceId(String resourceGroup) {
-		Preconditions.checkArgument(StringUtils.isNotBlank(resourceGroup));
-
-		return UUID.nameUUIDFromBytes(resourceGroup.getBytes()).toString().substring(0, 9) + resourceGroup.replace('_', '-');
-	}
-
-	private String getServiceId(KylinRouteRaw routeRaw) {
-		String serviceId;
-		switch (KylinResourceGroupTypeEnum.valueOf(routeRaw.getType())) {
-			case GLOBAL:
-				serviceId = GLOBAL_RESOURCE_GROUP;
-				break;
-			case DEFAULT:
-				serviceId = DEFAULT_RESOURCE_GROUP;
-				break;
-			default:
-				serviceId = resourceGroup2ServiceId(routeRaw.getResourceGroup());
-				break;
-		}
-
-		return serviceId;
-	}
 
 	private String getStringURIByServiceId(String serviceId) {
 		return "lb://" + serviceId;
@@ -78,47 +50,24 @@ public class StandardRouteTableTransformer implements RouteTableTransformer {
 	@Override
 	public RouteDefinition convert2RouteDefinition(KylinRouteRaw rawRoute) throws URISyntaxException {
 		RouteDefinition routeDefinition = new RouteDefinition();
-
 		String uuid = String.valueOf(rawRoute.getId());
 		routeDefinition.setId(uuid);
-		routeDefinition.setUri(new URI(getStringURIByServiceId(getServiceId(rawRoute))));
-
+		routeDefinition.setUri(new URI(getStringURIByServiceId(rawRoute.getHost())));
 		PredicateDefinition predicateDefinition = new PredicateDefinition();
+		predicateDefinition.setName(KYLIN_GLOBAL_ROUTE_PREDICATE);
+		predicateDefinition.getArgs().put(PREDICATE_ARG_KEY_0, "/**");
 		routeDefinition.setPredicates(Lists.newArrayList(predicateDefinition));
-
-		KylinResourceGroupTypeEnum resourceGroupTypeEnum = KylinResourceGroupTypeEnum.valueOf(rawRoute.getType());
-		switch (resourceGroupTypeEnum) {
-			case QUERY:
-				predicateDefinition.setName(KYLIN_ROUTE_PREDICATE);
-				predicateDefinition.getArgs().put(PREDICATE_ARG_KEY_0, rawRoute.getProject());
-				routeDefinition.setOrder(rawRoute.getOrder());
-				break;
-			case DEFAULT:
-				predicateDefinition.setName("Path");
-				predicateDefinition.getArgs().put(PREDICATE_ARG_KEY_0, "/**");
-				routeDefinition.setOrder(Integer.MAX_VALUE);
-				break;
-			case GLOBAL:
-				predicateDefinition.setName(KYLIN_GLOBAL_ROUTE_PREDICATE);
-				predicateDefinition.getArgs().put(PREDICATE_ARG_KEY_0, rawRoute.getType());
-				routeDefinition.setOrder(Integer.MAX_VALUE);
-				break;
-			default:
-				log.warn("Skip route, resource group type of route is {}", resourceGroupTypeEnum);
-				routeDefinition.setBroken(true);
-				break;
-		}
-
+		routeDefinition.setOrder(rawRoute.getOrder());
 		return routeDefinition;
 	}
 
 	@Override
-	public KylinLoadBalancer convert2KylinLoadBalancer(KylinRouteRaw routeRaw) {
-		KylinLoadBalancer kylinLoadBalancer =
-				new KylinLoadBalancer(getServiceId(routeRaw), ping, new RoundRobinRule(), pingStrategy, globalConfig.getLastValidRawRouteTableMvcc().get());
+	public MdxLoadBalancer convert2KylinLoadBalancer(KylinRouteRaw routeRaw) {
+		MdxLoadBalancer mdxLoadBalancer =
+				new MdxLoadBalancer(routeRaw.getHost(), ping, new RoundRobinRule(), pingStrategy, globalConfig.getLastValidRawRouteTableMvcc().get());
 
-		kylinLoadBalancer.addServers(routeRaw.getBackends());
-		return kylinLoadBalancer;
+				mdxLoadBalancer.addServers(routeRaw.getBackends());
+		return mdxLoadBalancer;
 	}
 
 	@Override
@@ -136,15 +85,14 @@ public class StandardRouteTableTransformer implements RouteTableTransformer {
 					continue;
 				}
 
-				KylinLoadBalancer loadBalancer;
-
-				String serviceId = getServiceId(rawRoute);
+				MdxLoadBalancer loadBalancer;
+				String serviceId = rawRoute.getHost();
 				if (loadBalancerMap.containsKey(serviceId)) {
 					if (!CollectionUtils.isEqualCollection(loadBalancerMap.get(serviceId).getAllServers(), rawRoute.getBackends())) {
 						throw new RuntimeException("Same resource group, difference server list !");
 					}
 
-					loadBalancer = (KylinLoadBalancer) loadBalancerMap.get(serviceId);
+					loadBalancer = (MdxLoadBalancer) loadBalancerMap.get(serviceId);
 				} else {
 					loadBalancer = convert2KylinLoadBalancer(rawRoute);
 					if (loadBalancer.isBroken()) {
