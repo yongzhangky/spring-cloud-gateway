@@ -1,6 +1,6 @@
 package io.kyligence.kap.gateway.config;
 
-import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+import com.mysql.cj.jdbc.MysqlDataSource;
 import io.kyligence.kap.gateway.constant.KylinGatewayVersion;
 import io.kyligence.kap.gateway.entity.KylinJdbcDataSource;
 import io.kyligence.kap.gateway.persistent.FileDataSource;
