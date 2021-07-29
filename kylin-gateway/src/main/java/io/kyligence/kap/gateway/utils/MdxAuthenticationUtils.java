@@ -23,7 +23,7 @@
  */
 
 
-package io.kyligence.kap.gateway.filter;
+package io.kyligence.kap.gateway.utils;
 
 import org.apache.commons.lang3.StringUtils;
 import org.bouncycastle.util.encoders.Base64;
@@ -37,9 +37,11 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class MdxAuthenticationFilter {
+public class MdxAuthenticationUtils {
 
-	private static final Pattern URI_PATTERN = Pattern.compile("/mdx/xmla/(.+)");
+	private static final Pattern URI_PATTERN_0 = Pattern.compile("/mdx/xmla/(.+)");
+
+	private static final Pattern URI_PATTERN_1 = Pattern.compile("/mdx/xmla_server/(.+)");
 
 	private static final String MDX_AUTH = "MDXAUTH";
 
@@ -55,14 +57,19 @@ public class MdxAuthenticationFilter {
 
 	private static final int SALT_LENGTH = 5;
 
-	MdxAuthenticationFilter() {
+	MdxAuthenticationUtils() {
 	}
 
 	public static String getProjectContext(String contextPath) {
 		String projectContext = "";
-		Matcher uriMatcher = URI_PATTERN.matcher(contextPath);
+		Matcher uriMatcher = URI_PATTERN_0.matcher(contextPath);
 		if (uriMatcher.find()) {
 			projectContext = uriMatcher.group(1);
+		} else {
+			uriMatcher = URI_PATTERN_1.matcher(contextPath);
+			if (uriMatcher.find()) {
+				projectContext = uriMatcher.group(2);
+			}
 		}
 		return projectContext;
 	}
@@ -164,7 +171,7 @@ public class MdxAuthenticationFilter {
 	}
 
 	public static String decodeTxt(int length, String encodedTxt) {
-		String decodeUserPwd = new String(org.apache.commons.codec.binary.Base64.decodeBase64(encodedTxt), StandardCharsets.UTF_8);
+		String decodeUserPwd = new String(Base64.decode(encodedTxt), StandardCharsets.UTF_8);
 		return decodeUserPwd.substring(length);
 	}
 

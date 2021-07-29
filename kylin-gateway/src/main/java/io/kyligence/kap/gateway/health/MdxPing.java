@@ -20,7 +20,10 @@ import java.util.Objects;
 @Slf4j
 @ConditionalOnProperty(name = "server.type", havingValue = KylinGatewayVersion.MDX)
 public class MdxPing implements IPing {
-	private static final String HEALTH_URL_FROMAT = "http://%s%s";
+
+	private static final String HEALTH_URL_FORMAT = "http://%s%s";
+
+	private static final Double MAX_LOAD = 100.0d;
 
 	@Autowired
 	private RestTemplate restTemplate;
@@ -43,8 +46,7 @@ public class MdxPing implements IPing {
 		NORMAL,
 		WARN,
 		ERROR,
-		FATAL,
-		;
+		FATAL
 	}
 
 	public ErrorLevel checkServer(Server server) {
@@ -52,7 +54,7 @@ public class MdxPing implements IPing {
 			return ErrorLevel.FATAL;
 		}
 
-		String healthCheckUrl = String.format(HEALTH_URL_FROMAT, server.getId(), healthUrl);
+		String healthCheckUrl = String.format(HEALTH_URL_FORMAT, server.getId(), healthUrl);
 		if (StringUtils.isNotBlank(projectName)) {
 			healthCheckUrl = healthCheckUrl + "?projectName=" + projectName;
 		}
@@ -78,10 +80,10 @@ public class MdxPing implements IPing {
 	public Double getServerLoad(Server server) {
 
 		if (Objects.isNull(server)) {
-			return Double.MAX_VALUE;
+			return MAX_LOAD;
 		}
 
-		String heathLoadUrl = String.format(HEALTH_URL_FROMAT, server.getId(), loadUrl);
+		String heathLoadUrl = String.format(HEALTH_URL_FORMAT, server.getId(), loadUrl);
 
 		try {
 			ResponseEntity<String> responseEntity = restTemplate.getForEntity(heathLoadUrl, String.class);
@@ -94,8 +96,7 @@ public class MdxPing implements IPing {
 		} catch (Exception e) {
 			// Nothing to do
 		}
-		return Double.MAX_VALUE;
+		return MAX_LOAD;
 	}
-
 
 }

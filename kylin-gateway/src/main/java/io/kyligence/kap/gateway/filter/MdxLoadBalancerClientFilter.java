@@ -4,11 +4,13 @@ import com.netflix.loadbalancer.BaseLoadBalancer;
 import com.netflix.loadbalancer.ILoadBalancer;
 import com.netflix.loadbalancer.Server;
 import io.kyligence.kap.gateway.health.MdxLoad;
+import io.kyligence.kap.gateway.utils.MdxAuthenticationUtils;
 import io.kyligence.kap.gateway.utils.TimeUtil;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +19,8 @@ import org.springframework.cloud.client.loadbalancer.LoadBalancerClient;
 import org.springframework.cloud.gateway.config.LoadBalancerProperties;
 import org.springframework.cloud.gateway.event.RefreshRoutesEvent;
 import org.springframework.cloud.gateway.filter.LoadBalancerClientFilter;
+import org.springframework.cloud.gateway.support.ipresolver.RemoteAddressResolver;
+import org.springframework.cloud.gateway.support.ipresolver.XForwardedRemoteAddressResolver;
 import org.springframework.cloud.netflix.ribbon.RibbonLoadBalancerClient;
 import org.springframework.context.ApplicationListener;
 import org.springframework.http.HttpHeaders;
@@ -35,9 +39,11 @@ import java.util.stream.Collectors;
 public class MdxLoadBalancerClientFilter extends LoadBalancerClientFilter
 		implements ApplicationListener<RefreshRoutesEvent> {
 
-	private Logger monitorLog = LoggerFactory.getLogger("monitor");
+	private static final Logger monitorLog = LoggerFactory.getLogger("monitor");
 
 	private Map<String, MdxLoadBalancer> resourceGroups = new ConcurrentHashMap<>();
+
+	private final RemoteAddressResolver remoteAddressResolver = XForwardedRemoteAddressResolver.trustAll();
 
 	/**
 	 * server cache
@@ -77,8 +83,9 @@ public class MdxLoadBalancerClientFilter extends LoadBalancerClientFilter
 		ServerHttpRequest request = exchange.getRequest();
 		HttpHeaders httpHeaders = request.getHeaders();
 		String hostName = "";
-		if (httpHeaders.get(HttpHeaders.HOST) != null) {
-			hostName = httpHeaders.get(HttpHeaders.HOST).get(0);
+		List<String> hosts = httpHeaders.get(HttpHeaders.HOST);
+		if (CollectionUtils.isNotEmpty(hosts)) {
+			hostName = hosts.get(0);
 		}
 		String[] tmp = hostName.split(":");
 		if (tmp.length < 2) {
@@ -90,7 +97,7 @@ public class MdxLoadBalancerClientFilter extends LoadBalancerClientFilter
 			String xHost = httpHeaders.get(X_HOST).get(0);
 			String xPort = httpHeaders.get(X_PORT).get(0);
 			if (StringUtils.isNotBlank(xHost) && StringUtils.isNotBlank(xPort)) {
-				Server server = new Server(xHost, Integer.valueOf(xPort));
+				Server server = new Server(xHost, Integer.parseInt(xPort));
 				MdxLoad.updateServerByQueryNum(server.getId(), 1);
 				return new RibbonLoadBalancerClient.RibbonServer(hostName, server);
 			}
@@ -100,9 +107,9 @@ public class MdxLoadBalancerClientFilter extends LoadBalancerClientFilter
 		String projectName = null;
 		String userName = null;
 		try {
-			String projectContext = MdxAuthenticationFilter.getProjectContext(request.getPath().toString());
-			projectName = MdxAuthenticationFilter.getProjectName(projectContext);
-			userName = MdxAuthenticationFilter.getUsername(request);
+			String contextPath = MdxAuthenticationUtils.getProjectContext(request.getPath().toString());
+			projectName = MdxAuthenticationUtils.getProjectName(contextPath);
+			userName = MdxAuthenticationUtils.getUsername(request);
 		} catch (Exception e) {
 			// Nothing to do
 		}
@@ -117,8 +124,8 @@ public class MdxLoadBalancerClientFilter extends LoadBalancerClientFilter
 		}
 
 		// Normal request, routed by request host
-		InetSocketAddress remoteAddress = request.getRemoteAddress();
-		if (!StringUtils.isNotBlank(serverKey) && remoteAddress != null) {
+		InetSocketAddress remoteAddress = remoteAddressResolver.resolve(exchange);
+		if (StringUtils.isBlank(serverKey) && remoteAddress != null) {
 			serverKey = remoteAddress.getHostString();
 			ServiceInstance serviceInstance = getServiceInstance(hostName, serverKey);
 			if (serviceInstance != null) {
@@ -126,6 +133,7 @@ public class MdxLoadBalancerClientFilter extends LoadBalancerClientFilter
 				return serviceInstance;
 			}
 		}
+
 		return choose(hostName, serverKey, null);
 	}
 
@@ -174,7 +182,7 @@ public class MdxLoadBalancerClientFilter extends LoadBalancerClientFilter
 		if (serverInfo != null && serverInfo.getServer() != null) {
 			String[] ipPort = serverInfo.getServer().split(":");
 			if (ipPort.length == IP_PORT_LENGTH) {
-				Server server = new Server(ipPort[0], Integer.valueOf(ipPort[1]));
+				Server server = new Server(ipPort[0], Integer.parseInt(ipPort[1]));
 				ServerInfo newServerInfo = new ServerInfo(serverInfo.getServer(), serverInfo.getStartTime(), TimeUtil.getSecondTime());
 				serverMap.put(serverKey, newServerInfo);
 				return new RibbonLoadBalancerClient.RibbonServer(hostName, server);
@@ -204,7 +212,7 @@ public class MdxLoadBalancerClientFilter extends LoadBalancerClientFilter
 		// choose node server by cluster server load
 		List<Server> serverList = loadBalancer.getAllServers();
 		Server chooseServer = null;
-		Double lowLoad = Double.MAX_VALUE;
+		double lowLoad = Double.MAX_VALUE;
 		for (Server server : serverList) {
 			MdxLoad.LoadInfo loadInfo = MdxLoad.LOAD_INFO_MAP.get(server.getId());
 			if (loadInfo == null || loadInfo.getNodeLoad() == null) {
