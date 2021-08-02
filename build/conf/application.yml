@@ -4,7 +4,10 @@ server.port: 80
 mdx:
   check-url: /api/system/health
   check-project:
-  load_url: /api/system/load
+  load-url: /api/system/load
+  generate-schema-url: /mdx/xmla/
+  sync-user:
+  sync-pwd:
   serverSize: 50
   cacheTime: 600
   weight:
@@ -17,6 +20,7 @@ mdx:
   ping-strategy:
     retry-times: 3
     interval-seconds: 3
+    generate-schema-interval-seconds: 1800
   proxy:
     - mdx-ke4:
       type: mdx

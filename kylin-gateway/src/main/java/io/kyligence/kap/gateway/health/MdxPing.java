@@ -4,16 +4,21 @@ import com.alibaba.fastjson.JSONObject;
 import com.netflix.loadbalancer.IPing;
 import com.netflix.loadbalancer.Server;
 import io.kyligence.kap.gateway.constant.KylinGatewayVersion;
+import io.kyligence.kap.gateway.utils.Encryptor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 @Component
@@ -25,6 +30,8 @@ public class MdxPing implements IPing {
 
 	private static final Double MAX_LOAD = 100.0d;
 
+	public final static String BASIC_AUTH_PREFIX = "Basic ";
+
 	@Autowired
 	private RestTemplate restTemplate;
 
@@ -34,8 +41,17 @@ public class MdxPing implements IPing {
 	@Value("${mdx.check-project:}")
 	private String projectName;
 
-	@Value("${mdx.load_url:/api/system/load}")
+	@Value("${mdx.load-url:/api/system/load}")
 	private String loadUrl;
+
+	@Value("${mdx.generate-schema-url:/mdx/xmla/}")
+	private String generateSchemaUrl;
+
+	@Value("${mdx.sync-user:}")
+	private String syncUser;
+
+	@Value("${mdx.sync-pwd:}")
+	private String syncPwd;
 
 	@Override
 	public boolean isAlive(Server server) {
@@ -97,6 +113,68 @@ public class MdxPing implements IPing {
 			// Nothing to do
 		}
 		return MAX_LOAD;
+	}
+
+	/**
+	 * generate schema
+	 *
+	 * @param server
+	 * @return
+	 */
+	public void generateSchema(Server server) {
+		if (Objects.isNull(server)) {
+			return;
+		}
+		String healthCheckUrl = String.format(HEALTH_URL_FORMAT, server.getId(), generateSchemaUrl);
+		if (StringUtils.isBlank(projectName) || StringUtils.isBlank(syncUser) || StringUtils.isBlank(syncPwd)) {
+			return;
+		}
+		healthCheckUrl = healthCheckUrl + "/" + projectName;
+		try {
+			String dePwd = Encryptor.decrypt(syncPwd);
+			String basicAuth = buildBasicAuth(syncUser, dePwd);
+			HttpEntity<String> requestEntity = getCheckDatasetHttpEntity(basicAuth);
+			restTemplate.postForEntity(healthCheckUrl, requestEntity, String.class);
+		} catch (Exception e) {
+			log.warn("{} generate schema failed", server);
+		}
+	}
+
+	public static HttpEntity<String> getCheckDatasetHttpEntity(String basicAuth) {
+		HttpHeaders requestHeaders = new HttpHeaders();
+		requestHeaders.add("Authorization", basicAuth);
+		requestHeaders.add("Content-Type", "text/xml");
+		requestHeaders.add("SOAPAction", "urn:schemas-microsoft-com:xml-analysis:Discover");
+		requestHeaders.add("User-Agent", "MSOLAP 15.0 Client");
+		String requestBody = "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">\n" +
+				"\t<soap:Header>\n" +
+				"\t\t<Session xmlns=\"urn:schemas-microsoft-com:xml-analysis\" SessionId=\"no_session\" />\n" +
+				"\t</soap:Header>\n" +
+				"\t<soap:Body>\n" +
+				"\t\t<Discover xmlns=\"urn:schemas-microsoft-com:xml-analysis\">\n" +
+				"\t\t\t<RequestType>DISCOVER_PROPERTIES</RequestType>\n" +
+				"\t\t\t<Restrictions>\n" +
+				"\t\t\t\t<RestrictionList>\n" +
+				"\t\t\t\t\t<PropertyName>Catalog</PropertyName>\n" +
+				"\t\t\t\t</RestrictionList>\n" +
+				"\t\t\t</Restrictions>\n" +
+				"\t\t\t<Properties>\n" +
+				"\t\t\t\t<PropertyList>\n" +
+				"\t\t\t\t\t<DbpropMsmdOptimizeResponse>9</DbpropMsmdOptimizeResponse>\n" +
+				"\t\t\t\t\t<DbpropMsmdActivityID>7592EAA7-C793-416F-96BF-0749BFB18C25</DbpropMsmdActivityID>\n" +
+				"\t\t\t\t\t<DbpropMsmdRequestID>58A9982A-9561-4E46-904B-8F0AA4F6849D</DbpropMsmdRequestID>\n" +
+				"\t\t\t\t\t<LocaleIdentifier>2052</LocaleIdentifier>\n" +
+				"\t\t\t\t</PropertyList>\n" +
+				"\t\t\t</Properties>\n" +
+				"\t\t</Discover>\n" +
+				"\t</soap:Body>\n" +
+				"</soap:Envelope>";
+		return new HttpEntity<>(requestBody, requestHeaders);
+	}
+
+	public static String buildBasicAuth(String username, String password) {
+		String encodedAuth = Base64.encodeBase64String((username + ":" + password).getBytes(StandardCharsets.UTF_8));
+		return BASIC_AUTH_PREFIX + encodedAuth;
 	}
 
 }

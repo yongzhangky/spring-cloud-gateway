@@ -4,24 +4,23 @@ import com.google.common.collect.Lists;
 import com.netflix.loadbalancer.IPing;
 import com.netflix.loadbalancer.IPingStrategy;
 import com.netflix.loadbalancer.Server;
+import io.kyligence.kap.gateway.config.MdxConfig;
 import io.kyligence.kap.gateway.event.KylinRefreshRoutesEvent;
-import io.kyligence.kap.gateway.utils.JsonUtil;
 import io.micrometer.core.instrument.util.NamedThreadFactory;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.ArrayUtils;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 
 import javax.annotation.PostConstruct;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
+import static io.kyligence.kap.gateway.health.MdxLoad.*;
 
 
 /**
@@ -42,7 +41,12 @@ public class MdxPingStrategy implements IPingStrategy, ApplicationListener<Kylin
 
 	private int intervalSeconds;
 
+	private int generateSchemaIntervalSeconds;
+
 	private IPing ping;
+
+	@Autowired
+	private MdxConfig mdxConfig;
 
 	public MdxPingStrategy(IPing ping) {
 		this.ping = ping;
@@ -53,7 +57,8 @@ public class MdxPingStrategy implements IPingStrategy, ApplicationListener<Kylin
 
 	@PostConstruct
 	public void init() {
-		pingRefresher.scheduleWithFixedDelay(this::pingServers, 0, intervalSeconds > 0 ? intervalSeconds : 3, TimeUnit.SECONDS);
+		pingRefresher.scheduleWithFixedDelay(this::generateSchema, 0, generateSchemaIntervalSeconds, TimeUnit.SECONDS);
+		pingRefresher.scheduleWithFixedDelay(this::pingServers, 10, intervalSeconds > 0 ? intervalSeconds : 3, TimeUnit.SECONDS);
 	}
 
 	private void pingServers() {
@@ -86,6 +91,28 @@ public class MdxPingStrategy implements IPingStrategy, ApplicationListener<Kylin
 		}
 
 		return results;
+	}
+
+	private void generateSchema() {
+		try {
+			List<String> serverList = new LinkedList<>();
+			for (MdxConfig.ProxyInfo proxyInfo : mdxConfig.getProxy()) {
+				serverList.addAll(proxyInfo.getServers());
+			}
+			List<Server> serverList1 = serverList.stream().map(s -> new Server(s)).collect(Collectors.toList());
+			generateAllServerSchema(serverList1);
+		} catch (Exception e) {
+			log.error("Failed to run cron generate schema", e);
+		}
+	}
+
+	public void generateAllServerSchema(List<Server> servers) {
+		if (CollectionUtils.isEmpty(servers)) {
+			return;
+		}
+		for (int i = 0; i < servers.size(); i++) {
+			executorService.submit(new GenerateSchemaTask(this.ping, servers.get(i)));
+		}
 	}
 
 	@Override
@@ -127,7 +154,7 @@ public class MdxPingStrategy implements IPingStrategy, ApplicationListener<Kylin
 	public synchronized void onApplicationEvent(KylinRefreshRoutesEvent event) {
 		for (Server server : serversStatus.keySet()) {
 			if (serversStatus.get(server).get() > retryTimes) {
-				MdxLoad.removeServer(server.getId());
+				removeServer(server.getId());
 			}
 		}
 		Set<Server> removeList = serversStatus.keySet().stream().filter(server -> !event.getServerSet().contains(server)).collect(Collectors.toSet());
@@ -156,7 +183,7 @@ public class MdxPingStrategy implements IPingStrategy, ApplicationListener<Kylin
 						case NORMAL:
 							errorTimes.set(0);
 							double load = ((MdxPing) ping).getServerLoad(server);
-							MdxLoad.updateServerByMemLoad(server.getId(), load);
+							updateServerByMemLoad(server.getId(), load);
 							return true;
 						case FATAL:
 							// stop route immediately
@@ -183,6 +210,25 @@ public class MdxPingStrategy implements IPingStrategy, ApplicationListener<Kylin
 			}
 
 			return errorTimes.incrementAndGet() < retryTimes;
+		}
+	}
+
+	private class GenerateSchemaTask implements Runnable {
+
+		private IPing ping;
+
+		private Server server;
+
+		private GenerateSchemaTask(IPing ping, Server server) {
+			this.ping = ping;
+			this.server = server;
+		}
+
+		@Override
+		public void run() {
+			if (ping instanceof MdxPing) {
+				((MdxPing) ping).generateSchema(server);
+			}
 		}
 	}
 
