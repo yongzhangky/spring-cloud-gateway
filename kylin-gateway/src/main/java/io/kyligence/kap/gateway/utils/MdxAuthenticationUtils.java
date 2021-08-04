@@ -68,7 +68,7 @@ public class MdxAuthenticationUtils {
 		} else {
 			uriMatcher = URI_PATTERN_1.matcher(contextPath);
 			if (uriMatcher.find()) {
-				projectContext = uriMatcher.group(2);
+				projectContext = uriMatcher.group(1);
 			}
 		}
 		return projectContext;

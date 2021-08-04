@@ -3,8 +3,8 @@ package io.kyligence.kap.gateway.server;
 import com.alibaba.fastjson.JSONObject;
 import com.esotericsoftware.yamlbeans.YamlReader;
 import io.kyligence.kap.gateway.bean.Response;
-import io.kyligence.kap.gateway.config.UpdateConfig;
 import io.kyligence.kap.gateway.config.MdxConfig;
+import io.kyligence.kap.gateway.config.UpdateConfig;
 import io.kyligence.kap.gateway.filter.MdxLoadBalancerClientFilter;
 import io.kyligence.kap.gateway.health.MdxLoad;
 import lombok.extern.slf4j.Slf4j;
@@ -45,11 +45,9 @@ public class GatewayController {
 			return new Response<String>(Response.Status.SUCCESS)
 					.data(RESP_SUC);
 		} catch (Exception e) {
-			Response response = new Response<String>(Response.Status.FAIL)
-					.data(FAIL);
-			response.errorMsg("reload gateway config catch error: " + e);
 			log.error("reload gateway config catch error: " + e);
-			e.printStackTrace();
+			Response<String> response = new Response<>(Response.Status.FAIL, FAIL);
+			response.errorMsg("reload gateway config catch error: " + e);
 			return response;
 		}
 	}
@@ -57,24 +55,19 @@ public class GatewayController {
 	@GetMapping("gateway/status/load")
 	public Response<Map<String, MdxLoad.LoadInfo>> getLoad() {
 		log.info("http call url: api/gateway/status/load");
-		Response response = new Response();
-		response.setData(MdxLoad.LOAD_INFO_MAP);
-		return response;
+		return new Response<>(MdxLoad.LOAD_INFO_MAP);
 	}
 
 	@GetMapping("gateway/status/route")
 	public Response<Map<String, MdxLoadBalancerClientFilter.ServerInfo>> getRouteStatus() {
 		log.info("http call url: api/gateway/status/route");
-		Response response = new Response();
-		response.setData(MdxLoadBalancerClientFilter.serverMap);
-		return response;
+		return new Response<>(MdxLoadBalancerClientFilter.serverMap);
 	}
 
 	@GetMapping("gateway/health")
 	public Response<String> checkHealth() {
 		log.info("http call url: api/gateway/health");
-		Response response = new Response();
-		response.setData(RESP_SUC);
-		return response;
+		return new Response<>(RESP_SUC);
 	}
+
 }
