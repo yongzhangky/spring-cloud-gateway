@@ -115,13 +115,13 @@ public class MdxLoad {
 		MdxLoad.queryWeight = queryWeight;
 	}
 
-	@Value(value = "${mdx.serverSize}")
-	public void setServerSize(long cacheTime) {
+	@Value(value = "${mdx.cacheTime}")
+	public void setCacheTime(long cacheTime) {
 		MdxLoad.cacheTime = cacheTime;
 	}
 
-	@Value(value = "${mdx.cacheTime}")
-	public void setCacheTime(long serverSize) {
+	@Value(value = "${mdx.serverSize}")
+	public void setServerSize(long serverSize) {
 		MdxLoad.serverSize = serverSize;
 	}
 
