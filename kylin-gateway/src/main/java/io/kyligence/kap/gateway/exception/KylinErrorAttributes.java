@@ -10,7 +10,10 @@ public class KylinErrorAttributes extends DefaultErrorAttributes {
 
 	@Override
 	public Map<String, Object> getErrorAttributes(ServerRequest request, ErrorAttributeOptions options) {
-		return getErrorAttributes(request, options.isIncluded(ErrorAttributeOptions.Include.STACK_TRACE));
+		Map<String, Object> msg = getErrorAttributes(request, options.isIncluded(ErrorAttributeOptions.Include.STACK_TRACE));
+		if (msg != null && msg.get("data") == null) {
+			msg.put("data", msg.get("message"));
+		}
+		return msg;
 	}
-
 }
