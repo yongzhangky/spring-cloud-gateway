@@ -2,6 +2,7 @@ package io.kyligence.kap.gateway.exception;
 
 import org.springframework.boot.web.error.ErrorAttributeOptions;
 import org.springframework.boot.web.reactive.error.DefaultErrorAttributes;
+import org.springframework.cloud.gateway.support.msg.ErrorCode;
 import org.springframework.cloud.gateway.support.msg.MessageUtils;
 import org.springframework.cloud.gateway.support.msg.MsgPicker;
 import org.springframework.web.reactive.function.server.ServerRequest;
@@ -26,7 +27,7 @@ public class KylinErrorAttributes extends DefaultErrorAttributes {
 				if (!MessageUtils.isFormatError(message)) {
 					if (msg.get("status") != null && msg.get("status").equals(500)) {
 						msg.put("stacktrace", message);
-						message = MsgPicker.getMsg().getSysError();
+						message = MsgPicker.getMsg().getContext(ErrorCode.SYSTEM_ERROR);
 					}
 				}
 				msg.put("msg", message);
