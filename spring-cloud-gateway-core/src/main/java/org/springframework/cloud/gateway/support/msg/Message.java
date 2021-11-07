@@ -18,14 +18,18 @@ public class Message {
 		return instance;
 	}
 
+	public String formatContext(String context, String code) {
+		return code + " " + context;
+	}
+
 	public String getContext(String project, ErrorCode errorCode) {
 		if (StringUtils.isNotEmpty(project)) {
-			return String.format(errorCode.en, project);
+			return formatContext(String.format(errorCode.en, project), errorCode.code);
 		}
 		return errorCode.en;
 	}
 
 	public String getContext(ErrorCode errorCode) {
-		return errorCode.en;
+		return formatContext(errorCode.en, errorCode.code);
 	}
 }

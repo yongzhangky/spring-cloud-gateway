@@ -21,13 +21,13 @@ public class CnMessage extends Message {
 	@Override
 	public String getContext(String project, ErrorCode errorCode) {
 		if (StringUtils.isNotEmpty(project)) {
-			return String.format(errorCode.cn, project);
+			return formatContext(String.format(errorCode.cn, project), errorCode.code);
 		}
-		return errorCode.cn;
+		return formatContext(errorCode.cn, errorCode.code);
 	}
 
 	@Override
 	public String getContext(ErrorCode errorCode) {
-		return errorCode.en;
+		return formatContext(errorCode.cn, errorCode.code);
 	}
 }
