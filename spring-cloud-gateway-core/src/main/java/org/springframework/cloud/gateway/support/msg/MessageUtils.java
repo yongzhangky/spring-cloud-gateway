@@ -10,6 +10,7 @@ import java.util.Set;
 public class MessageUtils {
 	public static final Set<Locale> SUPPORTED_LOCALES = Sets.newHashSet(Locale.US, Locale.UK, Locale.ENGLISH, Locale.CHINA, Locale.CHINESE);
 	public static final Locale DEFAULT_LOCALE = Locale.US;
+	public static final String DEFAULT_ERROR_CODE = "999";
 
 	public static boolean isCn(String acceptLanguage) {
 		Locale locale = parseLocale(acceptLanguage);

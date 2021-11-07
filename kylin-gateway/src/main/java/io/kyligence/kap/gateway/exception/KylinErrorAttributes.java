@@ -31,7 +31,7 @@ public class KylinErrorAttributes extends DefaultErrorAttributes {
 					}
 				}
 				msg.put("msg", message);
-				msg.put("code", "999");
+				msg.put("code", MessageUtils.DEFAULT_ERROR_CODE);
 			}
 		}
 	}
